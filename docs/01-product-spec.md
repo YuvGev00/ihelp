@@ -78,8 +78,9 @@ Trust is built from two independent mechanisms:
 - **Not an emergency service.** A static information page lists real Israeli
   emergency numbers as plain phone links. See §11 — this is a hard boundary.
 - **Not a chat app.** Coordination beyond the offer message (exact address, timing)
-  happens outside the platform in the MVP; contact details are exchanged after
-  assignment (see §8.4). A minimal in-app chat is a possible post-MVP addition.
+  happens outside the platform in the MVP; phone numbers are revealed mutually
+  after assignment (see §8.4). A minimal in-app chat is a possible post-MVP
+  addition.
 
 ---
 
@@ -125,8 +126,15 @@ scale/security consideration for later (see the scale and security documents).
 A verified helper can:
 
 - browse open requests, sorted by distance when location is available;
-- submit one offer per request, and edit or withdraw it while it is active;
-- see only their own offers on other people's requests (never competitors' offers);
+- submit one offer per request, and edit or withdraw it while it is active. A
+  single editable offer keeps the requester's comparison view clean (one row per
+  helper), prevents offer spam and self-competition, and editing covers the
+  "I want to revise my terms" case without extra rows;
+- see only their own offers on other people's requests — never competitors'.
+  Offers are sealed-bid on purpose: hiding competing terms prevents a race to
+  the bottom on price and protects helpers' pricing privacy, while the requester
+  still compares all offers side by side. It also keeps the access rule simple:
+  an offer is readable only by its owner and the request owner;
 - confirm completion from their side once assigned.
 
 Helpers have a public profile: display name, verification badge (professional /
@@ -140,8 +148,8 @@ Admins:
 
 - review and approve/reject verification requests (including viewing uploaded
   certificates in private storage);
-- perform basic moderation: unpublish an offensive request or revoke a helper's
-  verification.
+- perform basic moderation: hide an offensive request from browsing or revoke a
+  helper's verification.
 
 Admins do **not** get blanket write access to user content; their capabilities are
 scoped to the moderation actions above and enforced by the same RLS mechanism as
@@ -171,9 +179,12 @@ demand (see §6).
 
 ## 6. Business Goals
 
-1. **Validate the reversed-marketplace mechanic.** Show that publishing a request
-   produces offers faster than outbound search. Core metric: **time to first
-   offer**; supporting metric: share of requests receiving ≥1 offer within 24h.
+1. **Validate the reversed-marketplace mechanic.** The hypothesis is that
+   publishing a request gets help with less effort than outbound search. The MVP
+   measures its own side with absolute targets: median **time to first offer**
+   and the share of requests receiving ≥1 offer within 24 hours. (Outbound-search
+   duration has no in-product baseline, so "faster than searching" stays a
+   hypothesis these metrics support rather than a claim they prove.)
 2. **Build a trust layer that compounds.** Verification before the first offer and
    a rating after every completion. Metrics: share of active helpers that are
    verified (by construction, 100% of offering helpers), average rating, share of
@@ -198,7 +209,7 @@ Capabilities the software must provide to enable the goals above, and why:
 | # | Capability | Enables (goal §) |
 |---|---|---|
 | C1 | Account registration, login, and session management | All — identity underlies every permission |
-| C2 | User profile with display name and stored location (lat/lng captured via the browser's geolocation API, with user consent) | G1, G3 — distance sorting |
+| C2 | User profile with display name, phone number, and stored location (lat/lng captured via the browser's geolocation API, with user consent) | G1, G3 — distance sorting; the phone number is the post-assignment coordination channel (§8.4) |
 | C3 | Help-request creation with title, description, category, ≥1 photo (uploaded to storage), paid/volunteer + amount, and location | G1, G4 |
 | C4 | Request browsing for helpers: open requests sorted by distance (computed in application code with the Haversine formula — no external geocoding/maps service); graceful fallback to unsorted list when the user declines location permission | G1, G3 |
 | C5 | Offer submission, editing, and withdrawal by verified helpers; offer visibility restricted to the offer's owner and the request's owner | G1, G2 |
@@ -206,10 +217,14 @@ Capabilities the software must provide to enable the goals above, and why:
 | C7 | Dual-sided completion: each side independently confirms; the request becomes *completed* only when both have | G2 — prevents one side unilaterally closing a disputed job |
 | C8 | Rating: requester rates the helper once per completed request (1–5 stars + optional note); helper profiles show average and count | G2 |
 | C9 | Helper verification workflow: application with document/details upload to private storage; admin review queue with approve/reject + note | G2 |
-| C10 | Admin moderation: unpublish a request, revoke a verification | G2 — trust requires recourse |
+| C10 | Admin moderation: hide a request from browsing, revoke a verification | G2 — trust requires recourse |
 | C11 | Paid-marker checkbox on completed paid requests | G4 |
-| C12 | Row-level permission enforcement in the database (RLS) for every capability above | All — trust claims are empty if the data layer doesn't enforce them |
+| C12 | Database-level permission enforcement for every capability above — RLS policies, plus unique/check constraints and narrowly-scoped SECURITY DEFINER functions where a rule spans rows or must be atomic | All — trust claims are empty if the data layer doesn't enforce them |
 | C13 | Static emergency-resources page (see §11) | Duty of care; deliberately **not** a business capability |
+
+Measurement note: the schema records creation timestamps and every status
+transition, so all §6 metrics are computable with direct SQL. An in-app
+reports/analytics UI is deliberately out of scope (§10).
 
 Out of scope for MVP (deliberate): real payments, video upload, in-app chat,
 notifications, external geocoding/maps, PostGIS. Each is either a fragile/paid
@@ -222,9 +237,11 @@ external dependency or scope that does not test the core mechanic.
 ### 8.1 Registration, login, and profile
 
 1. A visitor signs up with email + password and receives an account.
-2. On first login the user sets a display name and is asked (browser permission
-   prompt) to share their location; if granted, lat/lng is saved to their profile.
-   Declining is fully supported — the app then shows unsorted lists (C4).
+2. On first login the user sets a display name and a phone number (used solely
+   for post-assignment coordination — §8.4 and §9.3 define exactly when it is
+   revealed) and is asked (browser permission prompt) to share their location; if
+   granted, lat/lng is saved to their profile. Declining location is fully
+   supported — the app then shows unsorted lists (C4).
 3. The user can update their profile and re-capture their location at any time.
 
 ### 8.2 Becoming a verified helper
@@ -240,10 +257,15 @@ external dependency or scope that does not test the core mechanic.
 
 1. The requester fills in title, description, category, uploads at least one
    photo, chooses paid (with proposed amount) or volunteer, and confirms the
-   request location (defaults to profile location).
+   request location (defaults to profile location). The photo requirement is
+   deliberate: it raises request quality and legitimacy, deters spam and
+   low-effort posts, and lets helpers scope the work before offering. For tasks
+   with nothing physical to show (a form, a ride), any relevant photo satisfies
+   the rule — accepted friction in exchange for a higher-quality feed.
 2. The request is published with status **open**, visible to signed-in users.
-3. While no offer is selected, the requester may edit the request or cancel it
-   (cancellation is terminal and closes any active offers).
+3. The requester may edit the request while no offer has been selected, and may
+   cancel it at any point before completion (cancellation is terminal and closes
+   any active — or selected — offers).
 
 ### 8.4 Offering, selecting, and completing (the core loop)
 
@@ -253,10 +275,14 @@ external dependency or scope that does not test the core mechanic.
 2. The requester reviews offers side by side — each shows the helper's name,
    badge, average rating, and message — and **selects one**. Atomically: the
    request becomes **assigned**, the chosen offer becomes *selected*, and all
-   other offers become *closed* (their owners see this immediately).
-3. After assignment, the requester and the selected helper see each other's
-   contact details on the request page and coordinate the actual help off-platform
-   (MVP has no chat).
+   other offers become *closed*. The database is never in a partial state; the
+   losing offerers see the closed status the next time they view their offers
+   (the MVP has no push notifications — §10).
+3. After assignment, the request page reveals — to these two users only — each
+   party's display name and phone number (captured at §8.1), and they coordinate
+   the actual help off-platform (MVP has no chat). The exposure follows the
+   permission matrix (§9.2) and is implemented as a dedicated, narrowly-scoped
+   read path rather than by opening up profile access.
 4. When the help has been carried out, each side presses "confirm completion".
    When **both** have confirmed, the request becomes **completed**. One-sided
    confirmation leaves it *assigned* with a visible "waiting for the other side"
@@ -271,15 +297,30 @@ external dependency or scope that does not test the core mechanic.
 2. The request becomes **rated** (terminal). The helper's profile average and
    count update.
 
+Rating is deliberately one-directional in the MVP. It answers the platform's
+single trust-critical question — *can this helper be trusted with my job?* —
+which is also the monetizable one (§5). Two-sided ratings would roughly double
+the rating schema, policies, and UX without testing the core mechanic;
+requester-side reputation is a named post-MVP item (§10). Ratings are visible to
+any signed-in user on the helper's profile — a public trust signal is the point.
+Immutability means the *parties* cannot edit a submitted rating, which blocks
+post-hoc pressure on the requester to soften it; the MVP has no rating
+moderation, an accepted and documented limitation (§10).
+
 ### 8.6 Admin review and moderation
 
 1. An admin opens the admin dashboard: pending verification queue and a
    moderation view.
 2. For each verification application: view details (and certificate, if any),
    approve or reject with a note.
-3. Moderation actions: unpublish a reported/offensive request; revoke a helper's
-   verification (existing assignments are untouched; the helper simply cannot make
-   new offers).
+3. Moderation actions: **hide** an offensive request from browsing (a hidden flag
+   that the public listing respects — the request's lifecycle state is untouched
+   and its owner still sees it); revoke a helper's verification (existing
+   assignments are untouched; the helper simply cannot make new offers). Admins
+   learn about problems out-of-band (e.g., email) in the MVP — there is
+   deliberately no in-app reporting pipeline (§10; see also the intake prohibition
+   in §11). The moderation view is a plain request list with hide/unhide, not a
+   report queue.
 
 ### 8.7 Emergency resources (informational)
 
@@ -318,9 +359,19 @@ Notes:
   the job (and trigger rating) unilaterally.
 - **cancelled** is terminal and allowed at any point before *completed*.
   Cancelling an *assigned* request also closes the selected offer. This protects
-  requesters (plans change) while the rating system protects helpers from abusive
-  churn — a serially-cancelling requester never gets work done.
-- **rated** is terminal. Ratings are immutable once submitted (MVP).
+  requesters whose circumstances change. The cost asymmetry to helpers (wasted
+  preparation, and no reputational mark on the requester — the MVP has no
+  requester-side reputation) is an accepted MVP limitation; surfacing requester
+  cancellation counts is a named roadmap item (§10). A serially-cancelling
+  requester does still punish themselves — they never get help — but the doc does
+  not claim the rating system protects helpers here, because it does not.
+- There is deliberately **no assigned → open recovery transition**. If the
+  selected helper disappears or backs out, the requester's exit is
+  cancel-and-repost. Terminal-cancel-only keeps the state machine and the atomic
+  assignment logic simple at MVP scale; an un-assign/re-open transition is a
+  named post-MVP improvement (§10).
+- **rated** is terminal. Ratings are immutable once submitted — the parties
+  cannot edit them after the fact (rationale in §8.5).
 
 ### 9.2 Permission matrix (enforced by RLS, not just UI)
 
@@ -338,12 +389,26 @@ Notes:
 | Confirm completion (helper side) | Selected helper only | Status = assigned |
 | Mark as paid | Request owner only | Status ∈ {completed, rated}; paid requests only |
 | Rate | Request owner only | Status = completed; once per request |
+| View rating | Any signed-in user | Status = rated; shown on the helper's profile |
+| View counterpart contact details | Request owner and selected helper only | Status ∈ {assigned, completed, rated}; via a dedicated, narrowly-scoped read path |
+| Submit verification application | Any registered user | No pending or approved application already exists |
+| View verification application (incl. certificate) | Applicant and admins only | — |
 | Approve/reject verification | Admins only | Application is *pending* |
-| Unpublish request / revoke verification | Admins only | — |
+| Hide/unhide request, revoke verification | Admins only | — |
 
-Every row above becomes one or more database RLS policies in the technical design
-document. The UI mirrors these rules for usability, but the database is the
-authority — a crafted API request cannot bypass what RLS denies.
+Every row above is enforced at the database layer and specified in the technical
+design document. Most rows map directly to RLS policies; rules that span rows or
+must be atomic map to unique/check constraints and narrowly-scoped SECURITY
+DEFINER functions — the atomic assignment RPC, the per-side completion updates,
+and the counterpart-contact read path. The UI mirrors these rules for usability,
+but the database is the authority — a crafted API request cannot bypass what it
+denies.
+
+One accepted trade-off is stated here rather than hidden: a requester may edit a
+request while offers are active, so an offer can predate a material change to the
+request. Offer owners always see the request's current content and may revise or
+withdraw a still-active offer in response; automatically invalidating offers on
+edit is deliberate complexity the MVP avoids.
 
 ### 9.3 Privacy note on location
 
@@ -355,22 +420,28 @@ API to signed-in users is a known, documented MVP limitation; coordinate roundin
 or server-side distance computation are listed as improvements in the security
 document.
 
+The phone number follows a stricter rule than coordinates: it is readable only by
+the assigned counterparty of a request (§9.2), and the profile form states, at
+capture time, exactly when it will be revealed.
+
 ---
 
 ## 10. MVP Scope
 
 ### In scope
 
-- Email/password auth; profile with display name and optional geolocation
-- Help requests: CRUD by owner, category, ≥1 photo, paid/volunteer + amount,
-  location, full lifecycle of §9
+- Email/password auth; profile with display name, phone number, and optional
+  geolocation
+- Help requests: create/edit/cancel by owner, category, ≥1 photo,
+  paid/volunteer + amount, location, full lifecycle of §9
 - Distance-sorted open-request browsing (Haversine, in-app), unsorted fallback
 - Offers: create/edit/withdraw, visibility rules, atomic selection
+- Post-assignment mutual contact reveal (display name + phone, parties only)
 - Dual-sided completion; paid marker
-- Ratings (1–5 + note) and helper profile aggregates
+- Ratings (1–5 + note, visible to signed-in users) and helper profile aggregates
 - Verification: professional (certificate upload) and community tracks; admin
   queue
-- Admin moderation: unpublish request, revoke verification
+- Admin moderation: hide request, revoke verification
 - Static emergency-resources page
 - Hebrew RTL UI throughout; English code and comments
 
@@ -383,7 +454,11 @@ document.
 | Video on requests | Storage/bandwidth cost disproportionate to MVP value; photos suffice |
 | Push/email notifications | Polling the UI suffices at MVP scale |
 | PostGIS / geocoding APIs | Haversine in TypeScript is sufficient at city scale and keeps deployment self-contained |
-| Editing/deleting ratings | Immutability keeps the trust signal simple and gaming-resistant |
+| Editing/deleting ratings (incl. admin moderation of rating notes) | Parties cannot edit a submitted rating — this blocks post-hoc pressure on the requester to soften it; the absence of rating moderation is an accepted, documented limitation |
+| Two-sided ratings / requester reputation (incl. surfacing cancellation counts) | Requester-only rating answers the single monetizable trust question (§8.5); requester-side reputation is the first trust-layer extension after MVP |
+| Un-assign / re-open transition | Cancel-and-repost is accepted friction; terminal-cancel-only keeps the state machine and atomic assignment simple (§9.1) |
+| Reports/analytics dashboards | Every §6 metric is computable with direct SQL over recorded timestamps and status transitions (§7); a reporting UI adds no MVP learning |
+| In-app reporting/flagging pipeline | Admins act on out-of-band complaints (§8.6); an intake surface is deliberately avoided (§11) |
 
 ---
 
@@ -441,8 +516,9 @@ explicit product decision.
 
 1. The full core loop — post → offer → assign → dual-complete → rate — works on
    the deployed public URL.
-2. Every permission in §9.2 is enforced by RLS and demonstrated by tests that
-   attempt forbidden actions and observe denial.
+2. Every permission in §9.2 is enforced at the database layer — RLS policies,
+   unique/check constraints, or constrained SECURITY DEFINER functions — and
+   demonstrated by tests that attempt forbidden actions and observe denial.
 3. A verification application with a certificate can be approved from the admin
    dashboard, and only then can that user submit offers.
 4. Distance sorting works with granted location permission and degrades
@@ -475,7 +551,8 @@ explicit product decision.
 | Weak community verification (admin cannot truly verify identity) | Documented openly as an MVP limitation; badge distinguishes tracks so requesters can weigh trust; stronger verification listed in security doc roadmap |
 | Off-platform coordination leaks value (users bypass rating) | Completion + rating is the only way to build reputation, which helpers need for future work |
 | Location privacy (coordinates readable via API) | §9.3 mitigations now; rounding/server-side distance in roadmap |
-| Disputed completion (one side refuses to confirm) | Request stays *assigned* with a visible waiting indicator; admin can be contacted; formal dispute flow is out of MVP scope and documented as such |
+| Disputed completion (one side refuses to confirm) | Request stays *assigned* with a visible waiting indicator; the requester can still cancel. The MVP has no in-product escalation path — admins hear about problems out-of-band (e.g., email), and dispute tooling is a named roadmap item |
+| Assigned helper no-shows or backs out | Requester cancels and re-posts (accepted friction, §9.1); an un-assign/re-open transition is a roadmap item (§10) |
 
 ---
 
@@ -490,4 +567,4 @@ explicit product decision.
 | Offer | A helper's proposal on a specific request |
 | Assignment | The requester's atomic selection of one offer |
 | Dual completion | Both parties independently confirming the help was carried out |
-| RLS | Row Level Security — PostgreSQL's per-row permission mechanism, the enforcement layer for §9.2 |
+| RLS | Row Level Security — PostgreSQL's per-row permission mechanism; the primary (though not sole — see §9.2) database enforcement layer |
