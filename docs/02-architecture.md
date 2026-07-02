@@ -227,9 +227,12 @@ plus constraints.
 | On `offers` insert/status change | Maintains request `open ↔ has_offers` | A *helper's* offer insert must update the *requester's* request row — the owner-only UPDATE policy would match zero rows without definer rights |
 | BEFORE UPDATE on `help_requests` | Rejects changes to system columns (`status`, `is_hidden`, `assigned_offer_id`, `completed_by_*`, `*_at`) unless the write comes from the privileged RPC path; scopes `is_paid` to owner + post-completion | RLS cannot constrain which columns change — without this, a crafted owner PATCH could set `status='rated'` directly, bypassing the state machine |
 
-**Helper:** `is_admin()` — a SECURITY DEFINER SQL function checking the caller's
-row in `profiles_private`; referenced by admin RLS policies (e.g., viewing
-pending applications) so the flag itself never needs to be broadly readable.
+**Helpers (SECURITY DEFINER lookups used inside policies):** `is_admin()` (reads
+`profiles_private` so the flag never needs to be broadly readable),
+`is_identity_verified()` (one-boolean gate checks), and `is_selected_helper()`
+(breaks the RLS policy recursion between `help_requests` and `offers` — two
+tables whose SELECT policies reference each other would otherwise raise
+Postgres's "infinite recursion detected in policy").
 
 **Constraints (plain schema, no privilege needed):** one *active* offer per
 helper per request and one *pending/approved* application per user per kind
@@ -452,9 +455,9 @@ one above misses, and only the last one is trusted:
    friendly Hebrew errors. Convenience only.
 4. **Database** — RLS policies (per-row, per-action), unique/check constraints,
    and the enumerated SECURITY DEFINER inventory of §4.2 (nine RPCs, three
-   trigger functions, one helper — each with in-body permission checks). **This
-   layer is the authority**; a crafted request that skips layers 1–3 still hits
-   it with nothing but the caller's own JWT.
+   trigger functions, three policy helpers — each with in-body permission
+   checks). **This layer is the authority**; a crafted request that skips layers
+   1–3 still hits it with nothing but the caller's own JWT.
 
 **The service-role key is used by zero lines of application code.** Everything the
 app does — including admin actions — runs as the signed-in user through RLS
