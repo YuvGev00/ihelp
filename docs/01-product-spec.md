@@ -16,7 +16,9 @@ nearby **compete to offer their help** — for pay or as volunteers. When the he
 done, both sides confirm completion and the requester rates the helper.
 
 The reversal shortens the path to help: demand is published once and supply comes
-to it, instead of demand chasing supply one phone call at a time.
+to it, instead of demand chasing supply one phone call at a time. Trust is
+symmetric by design — every user who transacts, requester or helper, passes an
+admin-reviewed identity verification before their first transaction.
 
 **MVP principle:** small, clean, working, and secure. The MVP implements the full
 core loop (post → offer → assign → complete → rate) with verification, ratings,
@@ -31,8 +33,11 @@ Finding trustworthy, available help quickly is hard:
 1. **Discovery is slow and one-directional.** The person who needs help must
    search, compare, and contact providers one by one. Providers do not see the
    demand unless they are contacted directly.
-2. **Trust is expensive to establish.** Anyone can claim to be an electrician.
-   Reviews are scattered across platforms; credentials are rarely checked anywhere.
+2. **Trust is expensive to establish — and it must run in both directions.**
+   Anyone can claim to be an electrician; reviews are scattered across platforms;
+   credentials are rarely checked anywhere. The mirror problem gets even less
+   attention: a helper answering a stranger's request walks into an unknown
+   home. A platform that verifies only one side leaves the other exposed.
 3. **Availability is opaque.** The requester cannot tell who is actually free and
    nearby *right now*; providers cannot see which requests near them are open.
 4. **Small and volunteer-suitable tasks fall through the cracks.** Tasks that are
@@ -64,8 +69,15 @@ iHelp inverts the marketplace:
 
 Trust is built from two independent mechanisms:
 
-1. **Verification before the first offer.** Only verified helpers can make offers.
-   Two verification tracks exist (see §4.2).
+1. **Identity verification before any transaction — on both sides.** A user must
+   pass admin-reviewed identity verification before posting a request *or*
+   submitting an offer (see §4.1). Requests summon real people to real places:
+   a malicious requester could use a fake request to lure a helper, just as a
+   malicious helper could exploit a requester's home. Verifying only one side
+   would leave the other exposed, so iHelp gates both. Professionals can add a
+   reviewed credential on top (see §4.3). A useful consequence: by the time
+   phone numbers are mutually revealed at assignment (§8.4), **both** parties
+   have passed admin review.
 2. **Ratings after every job.** Reputation compounds per completed request.
 
 ### What iHelp deliberately is not (MVP)
@@ -91,14 +103,59 @@ post a request in the morning and offer help on someone else's request in the
 afternoon. Permissions are therefore attached to **rows, not accounts**: what you
 may do with a specific request, offer, or rating depends on your relationship to
 that row (owner, offerer, assignee), enforced at the database level with Row Level
-Security (RLS). The only account-level flags are the helper-verification status and
-the admin flag.
+Security (RLS). The only account-level flags are the identity-verification status,
+the professional-credential status, and the admin flag.
 
-### 4.1 Requester (any registered user)
+### 4.1 Identity verification — the transaction gate
 
-Any registered user may post help requests — no verification required, because the
-requester exposes their own need and takes on no responsibility toward others.
-A requester can:
+Registration alone allows browsing only. Before a user can **post a request or
+submit an offer**, they must pass identity verification: they submit their full
+name, phone number, and a short self-description, optionally with an ID photo
+(stored privately, visible only to the applicant and admins), and an admin
+manually approves or rejects the application with a note. Rejected users may
+re-apply; the reviewing admin always sees the full application history, including
+prior rejection notes, so resubmitting the same content does not get a fresh roll
+of the dice. There is no re-apply cooldown in the MVP — accepted simplicity,
+bounded by the rule that only one application per kind can be pending at a time
+(§9.2).
+
+Why both sides, and not just helpers: every transaction ends with two strangers
+meeting in the physical world, usually at the requester's home. A malicious
+*helper* threatens the requester — but a malicious *requester* can just as easily
+use a fabricated request to lure a helper to an address. The gate is therefore
+symmetric: nobody summons a person, and nobody answers a summons, without having
+passed a human review first.
+
+The MVP uses **manual admin approval** — no external identity/KYC or SMS service —
+keeping the deployment free of fragile external dependencies while still putting
+a human gate before every transaction. This is consciously weaker than
+government-grade identity proofing; the limitation is documented openly (§14) and
+stronger verification is on the security-document roadmap.
+
+What review actually checks — and what it cannot: the admin reviews for
+completeness and coherence (a plausible full name, a sensible self-description,
+and a name match when an ID photo is provided); incomplete, implausible, or
+abusive applications are rejected. The phone number is **not** validated in the
+MVP — SMS OTP would reintroduce an external paid service — so it is treated as
+coordination data, not identity evidence; SMS verification is a named roadmap
+item in the security document. Requiring the ID photo was considered and
+deferred: at MVP scale the admin can simply reject applications that feel thin
+without one.
+
+While an application is pending, the verification page shows a visible *pending
+review* status. There are no notifications in the MVP (§10), so approval is
+discovered on the applicant's next visit — accepted friction, bounded by review
+turnaround: at MVP scale (tens of users, one pilot area) admins are expected to
+review within hours, and §14 names the queue as the system's human bottleneck.
+
+ID photos are retained while the account remains verified — they are the audit
+trail behind approval and any later revocation decision; retention limits and
+deletion are specified in the security document, parallel to §9.3's treatment of
+location data.
+
+### 4.2 Requester (any identity-verified user)
+
+Any identity-verified user may post help requests. A requester can:
 
 - publish, edit, and cancel their own requests;
 - view all offers on their own requests and select one;
@@ -106,24 +163,23 @@ A requester can:
 - rate the helper after completion (once per request);
 - mark a paid request as paid (record-keeping only).
 
-### 4.2 Verified Helper (registered user + approved verification)
+### 4.3 Helper (any identity-verified user; professional credential optional)
 
-Only verified helpers can submit offers, because the helper enters someone's home
-or handles their problem — this is where trust must be established up front.
-Verification has two tracks; a helper holds exactly one at a time:
+Any identity-verified user may submit offers — the identity gate of §4.1 is the
+trust prerequisite, and it has already been passed. On top of it, a helper may
+apply for a **professional credential**:
 
-| Track | Who it is for | Evidence | Approval |
+| Badge | Who it is for | Evidence | Approval |
 |---|---|---|---|
-| **Professional** | Licensed/certified trades and professions | Certificate/license document uploaded to private storage | Admin reviews the document and approves or rejects with a note |
-| **Community** | Neighbors willing to help without a professional credential | Basic identity details (full name, short self-description; optionally an ID photo to private storage) | Admin manually approves or rejects with a note |
+| **Verified** (baseline) | Every identity-verified user | Identity application of §4.1 | Admin (already granted) |
+| **Professional** (add-on) | Licensed/certified trades and professions | Certificate/license document uploaded to private storage | Admin reviews the document and approves or rejects with a note |
 
-The community track uses **manual admin approval** in the MVP — no external
-identity/KYC or SMS service — keeping the deployment free of fragile external
-dependencies while still putting a human gate before the first offer. This is a
-consciously weak form of verification, acceptable at MVP scale and flagged as a
-scale/security consideration for later (see the scale and security documents).
+The professional badge changes nothing about *what* a helper may do — offers,
+completion, and ratings work identically — it changes what the requester *sees*
+when comparing offers: a reviewed credential next to the offer. Skill signaling
+is layered on top of identity trust, not a substitute for it.
 
-A verified helper can:
+A helper can:
 
 - browse open requests, sorted by distance when location is available;
 - submit one offer per request, and edit or withdraw it while it is active. A
@@ -137,19 +193,22 @@ A verified helper can:
   an offer is readable only by its owner and the request owner;
 - confirm completion from their side once assigned.
 
-Helpers have a public profile: display name, verification badge (professional /
-community), average rating, and rating count.
+Helpers have a public profile: display name, badge (verified / professional),
+average rating, and rating count.
 
-### 4.3 Admin
+### 4.4 Admin
 
 A small trusted set of accounts flagged as admin (a boolean on the profile, set
 manually in the database — deliberately simple and auditable for MVP scale).
 Admins:
 
-- review and approve/reject verification requests (including viewing uploaded
-  certificates in private storage);
-- perform basic moderation: hide an offensive request from browsing or revoke a
-  helper's verification.
+- review and approve/reject verification applications of both kinds — identity
+  (§4.1) and professional credential (§4.3) — including viewing privately-stored
+  ID photos and certificates;
+- perform basic moderation: hide an offensive request from browsing, or revoke a
+  user's verification — per kind: revoking **identity** verification removes the
+  right to post requests and to submit offers alike (work already in flight is
+  untouched); revoking the **professional** credential removes only the badge.
 
 Admins do **not** get blanket write access to user content; their capabilities are
 scoped to the moderation actions above and enforced by the same RLS mechanism as
@@ -169,6 +228,12 @@ Users and customers are distinct:
   commission per completed paid job).
 - Requesters are intentionally **never charged** — charging the demand side would
   suppress the liquidity that makes the platform valuable to the supply side.
+  Identity verification (§4.1) does impose a one-time, *non-monetary* cost on
+  that same demand side; the two are deliberately different trades. The gate buys
+  safety — without it helpers face real physical risk — and is paid once, while
+  charging would be a recurring toll with no trust payoff. The gate is still
+  expected to cost some demand-side conversion, and the §6 G2
+  verification-completion metric exists precisely to watch that price.
 - Volunteer activity is not monetized. It exists because it drives adoption,
   density, and goodwill — all of which increase the value of the paid side.
 
@@ -185,10 +250,11 @@ demand (see §6).
    and the share of requests receiving ≥1 offer within 24 hours. (Outbound-search
    duration has no in-product baseline, so "faster than searching" stays a
    hypothesis these metrics support rather than a claim they prove.)
-2. **Build a trust layer that compounds.** Verification before the first offer and
-   a rating after every completion. Metrics: share of active helpers that are
-   verified (by construction, 100% of offering helpers), average rating, share of
-   completed requests that get rated.
+2. **Build a trust layer that compounds — on both sides.** Identity verification
+   before any transaction (requester or helper), an optional reviewed professional
+   credential, and a rating after every completion. Metrics: share of registered
+   users completing identity verification, share of helpers holding the
+   professional badge, average rating, share of completed requests that get rated.
 3. **Reach local liquidity.** The product is only useful where enough helpers see
    enough requests. Distance-sorted browsing concentrates attention locally.
    Metric: completion rate (assigned → completed) within a pilot area.
@@ -210,13 +276,13 @@ Capabilities the software must provide to enable the goals above, and why:
 |---|---|---|
 | C1 | Account registration, login, and session management | All — identity underlies every permission |
 | C2 | User profile with display name, phone number, and stored location (lat/lng captured via the browser's geolocation API, with user consent) | G1, G3 — distance sorting; the phone number is the post-assignment coordination channel (§8.4) |
-| C3 | Help-request creation with title, description, category, ≥1 photo (uploaded to storage), paid/volunteer + amount, and location | G1, G4 |
+| C3 | Help-request creation (identity-verified users only) with title, description, category, ≥1 photo (uploaded to storage), paid/volunteer + amount, and location | G1, G2, G4 |
 | C4 | Request browsing for helpers: open requests sorted by distance (computed in application code with the Haversine formula — no external geocoding/maps service); graceful fallback to unsorted list when the user declines location permission | G1, G3 |
-| C5 | Offer submission, editing, and withdrawal by verified helpers; offer visibility restricted to the offer's owner and the request's owner | G1, G2 |
+| C5 | Offer submission, editing, and withdrawal by identity-verified users; offer visibility restricted to the offer's owner and the request's owner | G1, G2 |
 | C6 | Atomic offer selection: choosing one offer assigns the request and closes all competing offers in a single transaction (no partial states visible to users) | G1 — the marketplace's pivotal moment must be reliable |
 | C7 | Dual-sided completion: each side independently confirms; the request becomes *completed* only when both have | G2 — prevents one side unilaterally closing a disputed job |
 | C8 | Rating: requester rates the helper once per completed request (1–5 stars + optional note); helper profiles show average and count | G2 |
-| C9 | Helper verification workflow: application with document/details upload to private storage; admin review queue with approve/reject + note | G2 |
+| C9 | Two-kind verification workflow — identity applications (required to transact) and professional-credential applications — with private-storage uploads and an admin review queue (approve/reject + note) | G2 |
 | C10 | Admin moderation: hide a request from browsing, revoke a verification | G2 — trust requires recourse |
 | C11 | Paid-marker checkbox on completed paid requests | G4 |
 | C12 | Database-level permission enforcement for every capability above — RLS policies, plus unique/check constraints and narrowly-scoped SECURITY DEFINER functions where a rule spans rows or must be atomic | All — trust claims are empty if the data layer doesn't enforce them |
@@ -237,23 +303,35 @@ external dependency or scope that does not test the core mechanic.
 ### 8.1 Registration, login, and profile
 
 1. A visitor signs up with email + password and receives an account.
-2. On first login the user sets a display name and a phone number (used solely
-   for post-assignment coordination — §8.4 and §9.3 define exactly when it is
-   revealed) and is asked (browser permission prompt) to share their location; if
-   granted, lat/lng is saved to their profile. Declining location is fully
-   supported — the app then shows unsorted lists (C4).
+2. On first login the user sets a display name and is asked (browser permission
+   prompt) to share their location; if granted, lat/lng is saved to their
+   profile. Declining location is fully supported — the app then shows unsorted
+   lists (C4). The phone number is captured later, as part of identity
+   verification (§8.2) — it is used solely for post-assignment coordination, and
+   §8.4/§9.3 define exactly when it is revealed.
 3. The user can update their profile and re-capture their location at any time.
+   This includes the phone number: it is coordination data, not reviewed identity
+   evidence (§4.1 — the MVP does not validate it either way), so editing it does
+   not trigger re-verification.
 
-### 8.2 Becoming a verified helper
+### 8.2 Getting verified — identity first, credential optional
 
-1. Any user opens "Become a helper" and picks a track: professional or community.
-2. Professional: uploads a certificate/license file (stored privately, visible
-   only to the applicant and admins). Community: fills in identity details.
-3. The application enters the admin review queue with status *pending*.
-4. An admin approves (the user gains the verified-helper badge and the ability to
-   offer) or rejects with a note (the user may re-apply).
+1. Any registered user opens "account verification" and submits the identity
+   application (§4.1): full name, phone number (saved to the profile), a short
+   self-description, and optionally an ID photo (stored privately, visible only
+   to the applicant and admins).
+2. The application enters the admin review queue with status *pending*. An admin
+   approves — the user may now post requests and submit offers — or rejects with
+   a note (the user may re-apply).
+3. An identity-verified user may additionally apply for the **professional
+   badge** by uploading a certificate/license file (same private storage, same
+   review flow). Approval adds the badge shown beside their offers; rejection
+   leaves them a verified, non-professional helper.
 
 ### 8.3 Posting and managing a help request (requester)
+
+Posting requires identity verification (§4.1); an unverified user is redirected
+to the verification flow of §8.2.
 
 1. The requester fills in title, description, category, uploads at least one
    photo, chooses paid (with proposed amount) or volunteer, and confirms the
@@ -269,6 +347,10 @@ external dependency or scope that does not test the core mechanic.
 
 ### 8.4 Offering, selecting, and completing (the core loop)
 
+Offering requires identity verification (§4.1), mirroring the posting side: an
+unverified user can view open requests, but attempting to offer redirects to the
+verification flow of §8.2.
+
 1. A verified helper browses open requests (distance-sorted), opens one, and
    submits an offer: a message and, for paid requests, their proposed terms.
    The request's status becomes **has_offers** on the first active offer.
@@ -279,7 +361,8 @@ external dependency or scope that does not test the core mechanic.
    losing offerers see the closed status the next time they view their offers
    (the MVP has no push notifications — §10).
 3. After assignment, the request page reveals — to these two users only — each
-   party's display name and phone number (captured at §8.1), and they coordinate
+   party's display name and phone number (captured at identity verification,
+   §8.2), and they coordinate
    the actual help off-platform (MVP has no chat). The exposure follows the
    permission matrix (§9.2) and is implemented as a dedicated, narrowly-scoped
    read path rather than by opening up profile access.
@@ -313,10 +396,13 @@ moderation, an accepted and documented limitation (§10).
    moderation view.
 2. For each verification application: view details (and certificate, if any),
    approve or reject with a note.
-3. Moderation actions: **hide** an offensive request from browsing (a hidden flag
-   that the public listing respects — the request's lifecycle state is untouched
-   and its owner still sees it); revoke a helper's verification (existing
-   assignments are untouched; the helper simply cannot make new offers). Admins
+3. Moderation actions: **hide** an offensive request (a hidden flag enforced by
+   the read rule in §9.2 — the request's lifecycle state is untouched, and its
+   owner, its selected helper, and admins still see it); **revoke a user's
+   verification**, per kind: revoking identity verification removes the right to
+   post requests and to submit offers alike (requests and assignments already in
+   flight are untouched — admins may additionally hide a revoked user's open
+   requests); revoking the professional credential removes only the badge. Admins
    learn about problems out-of-band (e.g., email) in the MVP — there is
    deliberately no in-app reporting pipeline (§10; see also the intake prohibition
    in §11). The moderation view is a plain request list with hide/unhide, not a
@@ -377,12 +463,12 @@ Notes:
 
 | Action | Who may perform it | Condition |
 |---|---|---|
-| Publish request | Any registered user | — |
-| View request | Any signed-in user | Status ∈ {open, has_offers}; owner, selected helper, and admins can also view later states |
+| Publish request | Identity-verified users only | — |
+| View request | Any signed-in user | Status ∈ {open, has_offers} and not hidden; owner, selected helper, and admins also view later states and hidden requests |
 | Edit request | Request owner only | Status ∈ {open, has_offers} |
 | Cancel request | Request owner only | Any status before *completed* |
-| Submit offer | Verified helpers only | Request status ∈ {open, has_offers}; not on own request; one active offer per helper per request |
-| View offer | Offer owner and request owner | Admins for moderation |
+| Submit offer | Identity-verified users only | Request status ∈ {open, has_offers}; not on own request; one active offer per helper per request |
+| View offer | Offer owner and request owner only | — |
 | Edit/withdraw offer | Offer owner only | While offer is *active* |
 | Select offer (assign) | Request owner only | Status = has_offers; executed atomically |
 | Confirm completion (requester side) | Request owner only | Status = assigned |
@@ -391,7 +477,7 @@ Notes:
 | Rate | Request owner only | Status = completed; once per request |
 | View rating | Any signed-in user | Status = rated; shown on the helper's profile |
 | View counterpart contact details | Request owner and selected helper only | Status ∈ {assigned, completed, rated}; via a dedicated, narrowly-scoped read path |
-| Submit verification application | Any registered user | No pending or approved application already exists |
+| Submit verification application | Any registered user | Per kind (identity / professional): no pending or approved application of that kind already exists; professional requires approved identity |
 | View verification application (incl. certificate) | Applicant and admins only | — |
 | Approve/reject verification | Admins only | Application is *pending* |
 | Hide/unhide request, revoke verification | Admins only | — |
@@ -421,8 +507,9 @@ or server-side distance computation are listed as improvements in the security
 document.
 
 The phone number follows a stricter rule than coordinates: it is readable only by
-the assigned counterparty of a request (§9.2), and the profile form states, at
-capture time, exactly when it will be revealed.
+the assigned counterparty of a request (§9.2), and the identity-verification
+application form — where it is captured (§8.2) — states exactly when it will be
+revealed.
 
 ---
 
@@ -439,8 +526,9 @@ capture time, exactly when it will be revealed.
 - Post-assignment mutual contact reveal (display name + phone, parties only)
 - Dual-sided completion; paid marker
 - Ratings (1–5 + note, visible to signed-in users) and helper profile aggregates
-- Verification: professional (certificate upload) and community tracks; admin
-  queue
+- Verification: identity gate for all transacting users (name, phone, optional
+  ID photo) + optional professional credential (certificate upload); one admin
+  review queue for both kinds
 - Admin moderation: hide request, revoke verification
 - Static emergency-resources page
 - Hebrew RTL UI throughout; English code and comments
@@ -519,8 +607,10 @@ explicit product decision.
 2. Every permission in §9.2 is enforced at the database layer — RLS policies,
    unique/check constraints, or constrained SECURITY DEFINER functions — and
    demonstrated by tests that attempt forbidden actions and observe denial.
-3. A verification application with a certificate can be approved from the admin
-   dashboard, and only then can that user submit offers.
+3. An identity application can be approved from the admin dashboard, and only
+   then can that user post requests or submit offers; a professional-credential
+   application can likewise be approved and its badge appears beside the
+   helper's offers.
 4. Distance sorting works with granted location permission and degrades
    gracefully without it.
 5. All six submission documents, the test suite, and the deployed app are
@@ -547,8 +637,10 @@ explicit product decision.
 
 | Risk | Mitigation |
 |---|---|
-| Cold start: helpers see no requests, requesters get no offers | Pilot-area focus; volunteer requests widen the helper pool; seeded demo data for presentation |
-| Weak community verification (admin cannot truly verify identity) | Documented openly as an MVP limitation; badge distinguishes tracks so requesters can weigh trust; stronger verification listed in security doc roadmap |
+| Cold start: helpers see no requests, requesters get no offers — compounded by the identity gate, which delays every new user's first contribution | Pilot-area focus; volunteer requests widen the helper pool; seeded, pre-approved demo accounts for presentation; verification is reachable straight from signup and reviewed within hours at pilot scale — the gate adds latency, not a wall |
+| Manual review queue becomes the bottleneck (every transacting user passes through it) | Acceptable at MVP scale: hours-level turnaround, visible *pending* status (§4.1). Queue length is the first scale signal to watch; semi-automated checks (e.g., SMS OTP) are the roadmap answer in the scale/security documents |
+| Weak identity verification (manual admin approval is not government-grade identity proofing) | Documented openly as an MVP limitation; applies symmetrically to both sides; optional ID photo strengthens review; stronger verification (e.g., document checks) listed in security doc roadmap |
+| Malicious requester lures a helper with a fabricated request (mirror: malicious helper exploits a requester) | Symmetric identity gate (§4.1) — no one transacts without passing human review; phone numbers revealed only after mutual commitment at assignment (§8.4); admin can revoke verification either way; residual physical-world risk documented honestly — no platform eliminates it |
 | Off-platform coordination leaks value (users bypass rating) | Completion + rating is the only way to build reputation, which helpers need for future work |
 | Location privacy (coordinates readable via API) | §9.3 mitigations now; rounding/server-side distance in roadmap |
 | Disputed completion (one side refuses to confirm) | Request stays *assigned* with a visible waiting indicator; the requester can still cancel. The MVP has no in-product escalation path — admins hear about problems out-of-band (e.g., email), and dispute tooling is a named roadmap item |
@@ -560,10 +652,10 @@ explicit product decision.
 
 | Term | Meaning |
 |---|---|
-| Requester | The user who published a help request (a per-request role, not an account type) |
-| Helper | A user whose verification application was approved; may submit offers |
-| Professional helper | Helper verified with a reviewed certificate/license |
-| Community helper | Helper verified by manual admin approval without a professional credential |
+| Requester | The user who published a help request (a per-request role, not an account type); must be identity-verified |
+| Identity verification | Admin-reviewed application (full name, phone, self-description, optional ID photo) required before posting or offering — the symmetric trust gate of §4.1 |
+| Helper | An identity-verified user acting as offerer on a request (a per-request role, not an account type) |
+| Professional helper | Helper who additionally holds the reviewed certificate/license badge |
 | Offer | A helper's proposal on a specific request |
 | Assignment | The requester's atomic selection of one offer |
 | Dual completion | Both parties independently confirming the help was carried out |
