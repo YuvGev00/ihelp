@@ -88,7 +88,7 @@ export default async function AdminPage() {
                 )}
                 {app.doc_path && signedByPath.get(app.doc_path) && (
                   <a
-                    href={signedByPath.get(app.doc_path)}
+                    href={signedByPath.get(app.doc_path) ?? "#"}
                     target="_blank"
                     rel="noreferrer"
                     className="mt-2 inline-block text-sm font-semibold text-emerald-700 underline"
