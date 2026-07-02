@@ -99,6 +99,7 @@ document 3 (technical design). Architecture-level view:
 
 ```mermaid
 erDiagram
+    profiles ||--|| profiles_private : "1:1 private columns"
     profiles ||--o{ help_requests : "owns"
     profiles ||--o{ offers : "makes"
     profiles ||--o{ verification_applications : "submits"
@@ -111,11 +112,14 @@ erDiagram
     profiles {
         uuid id PK "= auth.users.id"
         text display_name
-        text phone "revealed only post-assignment"
-        float lat "nullable"
-        float lng "nullable"
         bool is_identity_verified "denormalized gate flag"
         bool is_professional "denormalized badge flag"
+    }
+    profiles_private {
+        uuid user_id PK "= profiles.id"
+        text phone "own-row + contact RPC only"
+        float lat "nullable — own-row only"
+        float lng "nullable — own-row only"
         bool is_admin "set manually in DB"
     }
     verification_applications {
@@ -123,6 +127,8 @@ erDiagram
         uuid user_id FK
         text kind "identity | professional"
         text status "pending | approved | rejected"
+        text full_name
+        text self_description
         text admin_note
         text doc_path "ID photo / certificate in private storage"
     }
@@ -132,10 +138,14 @@ erDiagram
         text status "open | has_offers | assigned | completed | rated | cancelled"
         bool is_hidden "admin moderation flag"
         text payment_type "paid | volunteer"
+        numeric amount "nullable — paid requests"
+        bool is_paid "owner marker, post-completion"
+        float lat "request location (requester-confirmed)"
+        float lng
         uuid assigned_offer_id FK "nullable"
         bool completed_by_requester
         bool completed_by_helper
-        timestamptz assigned_at "one column per transition (metrics)"
+        timestamptz assigned_at "one column per once-reached state (metrics)"
     }
     offers {
         uuid id PK
@@ -143,6 +153,7 @@ erDiagram
         uuid helper_id FK
         text status "active | selected | closed | withdrawn"
         text message
+        text proposed_terms "nullable — paid requests"
     }
     ratings {
         uuid request_id PK "unique - one rating per request"
@@ -154,7 +165,17 @@ erDiagram
 
 Notes on the shape:
 
-- **`profiles` is 1:1 with `auth.users`** (created by trigger on signup). The
+- **`profiles` is split into a public and a private table — because Postgres RLS
+  is row-level, not column-level.** Helper cards and `/helpers/[id]` require every
+  signed-in user to read other users' `display_name` and badges, so `profiles`
+  necessarily carries a broad SELECT policy. If phone, home coordinates, or `is_admin`
+  lived in that same row, any signed-up account could read them with one direct
+  PostgREST call — silently defeating the product spec's "phone revealed only
+  post-assignment" rule. So `profiles` holds only what is safe to show anyone
+  signed in, and `profiles_private` (own-row SELECT/UPDATE only) holds phone,
+  lat/lng, and `is_admin`; the contact-reveal RPC and the `is_admin()` helper are
+  the only cross-user paths into it.
+- **Both rows are created by a trigger on signup.** The
   `is_identity_verified` / `is_professional` flags are denormalized from
   `verification_applications` on approval so that RLS policies and page guards
   check one boolean instead of joining application history. The applications
@@ -164,27 +185,57 @@ Notes on the shape:
   object for cleanup.
 - **Status-transition timestamps are columns** (`assigned_at`, `completed_at`,
   `rated_at`, `cancelled_at`, plus `created_at`) rather than a history table:
-  the state machine is linear, so one timestamp per state fully records every
-  transition (product spec §7 measurement note) with zero extra machinery.
+  every state that matters to the §6 metrics is reached at most once, so one
+  column each fully records it. The one cycle in the machine — `open ↔
+  has_offers` — is *derived* state whose history is already reconstructible from
+  the `offers` table (`created_at`, withdrawn status), so it needs no column and
+  no metric asks for one (product spec §7 measurement note).
 - **`assigned_offer_id`** on the request plus `status` on the offer is redundant
   on purpose: the request points at the winning offer (fast reads), the offer
   status makes competitor offers self-describing (a helper's "my offers" list
   needs no join through requests).
 
-### 4.2 Database-side logic (and why it lives there)
+### 4.2 Database-side logic — the complete privileged-code inventory
 
-| Mechanism | What it does | Why in the DB and not app code |
+A recurring Postgres reality shapes this section: **RLS is row-level.** It cannot
+constrain *which columns* an UPDATE changes, compare old and new values, or
+authorize writing rows the caller does not own. Every rule with one of those
+shapes therefore lives in a small, enumerated set of `SECURITY DEFINER` functions
+(each with an in-body permission check and a pinned `search_path`) — this table
+is the complete list the security document audits. Everything else is plain RLS
+plus constraints.
+
+**RPCs (called from Server Actions; the write path for every state transition):**
+
+| RPC | What it does (one transaction each) | Why not plain RLS |
 |---|---|---|
-| RPC `assign_offer(request_id, offer_id)` | Sets request to *assigned* + stamps `assigned_at` + marks chosen offer *selected* + closes all competing offers, in one transaction | The marketplace's pivotal moment must be atomic; RLS alone cannot authorize the caller to write competitors' offers, and app-side sequential updates could fail halfway (product spec §7 C6) |
-| RPC `confirm_completion(request_id)` | Sets the caller's own completion flag (requester or helper side, derived from who calls); flips status to *completed* when both flags true | "Each side may set only its own flag" is an old-vs-new column rule that RLS UPDATE policies cannot express (product spec §9.2) |
-| RPC `get_counterpart_contact(request_id)` | Returns the other party's display name + phone, only to the request owner or selected helper, only from *assigned* onward | Column-level conditional exposure — row-level SELECT policies cannot reveal one column to one pair of users per row (product spec §8.4) |
-| Trigger on `offers` | Maintains request status `open ↔ has_offers` on offer insert/withdraw | The invariant must hold no matter which code path writes an offer; a trigger cannot be forgotten |
-| Trigger on `auth.users` | Creates the `profiles` row on signup | Guarantees profile existence for every authenticated user |
-| Constraints (unique, check) | One active offer per helper per request; one rating per request; stars 1–5; status transitions guarded | Cross-row uniqueness and value ranges belong to the schema, not to goodwill |
+| `create_request_with_photos(payload, photo_paths[])` | Inserts the request and its photo rows; validates ≥1 path, each inside the caller's own storage folder | Two-table insert must be atomic (supabase-js has no client-side transactions) and "≥1 photo" is a cross-table minimum no CHECK constraint can express |
+| `assign_offer(request_id, offer_id)` | Guarded updates: request `has_offers → assigned` + `assigned_at`, chosen offer → *selected* **only if still active**, all competing offers → *closed*; raises (rolls back) if any guard matches zero rows — the row lock serializes a concurrent withdraw | Atomic pivotal moment; closes the withdraw-vs-assign race; RLS cannot authorize the caller to write competitors' offers (spec §7 C6) |
+| `confirm_completion(request_id)` | Sets the caller's own completion flag (side derived from caller identity); flips status to *completed* + `completed_at` when both flags true | "Each side sets only its own flag" is an old-vs-new column rule RLS UPDATE policies cannot express (spec §9.2) |
+| `cancel_request(request_id)` | Owner + pre-completion check; sets *cancelled* + `cancelled_at`; closes all active — and any selected — offers | Same shape as `assign_offer`: atomic transition + cross-owner offer writes (spec §9.1) |
+| `submit_rating(request_id, stars, note)` | Owner + status=*completed* check; inserts the rating and advances the request to *rated* + `rated_at` | The `completed → rated` transition must be atomic with the insert, and no owner UPDATE right could safely flip status |
+| `review_application(application_id, verdict, note)` | Admin check; updates the application row and the applicant's profile flags together | Two-table atomic write; and an admin UPDATE policy on `profiles` would (row-level!) grant admins write to *every* profile column including `is_admin` — exactly what spec §4.4 forbids |
+| `revoke_verification(user_id, kind)` | Admin check; clears the identity or professional flag (and marks the approval revoked in the audit trail) | Same column-scoping argument as above |
+| `set_request_hidden(request_id, hidden)` | Admin check; touches only `is_hidden` | Guarantees moderation "leaves the lifecycle state untouched" (spec §8.6) by construction |
+| `get_counterpart_contact(request_id)` | Read-only: returns the other party's display name + phone (from `profiles_private`), only to the request owner or selected helper, from *assigned* onward | Column-level conditional exposure — row-level SELECT policies cannot reveal one column to one pair of users per row (spec §8.4) |
 
-All three RPCs are `SECURITY DEFINER` with explicit permission checks in their
-body — they are the *only* code that bypasses RLS, they are small, and they are
-enumerated here so the security document can audit exactly three functions.
+**SECURITY DEFINER trigger functions (invisible plumbing, same audit list):**
+
+| Trigger | What it does | Why privileged |
+|---|---|---|
+| On `auth.users` insert | Creates the `profiles` + `profiles_private` rows | Runs during signup, before any session exists |
+| On `offers` insert/status change | Maintains request `open ↔ has_offers` | A *helper's* offer insert must update the *requester's* request row — the owner-only UPDATE policy would match zero rows without definer rights |
+| BEFORE UPDATE on `help_requests` | Rejects changes to system columns (`status`, `is_hidden`, `assigned_offer_id`, `completed_by_*`, `*_at`) unless the write comes from the privileged RPC path; scopes `is_paid` to owner + post-completion | RLS cannot constrain which columns change — without this, a crafted owner PATCH could set `status='rated'` directly, bypassing the state machine |
+
+**Helper:** `is_admin()` — a SECURITY DEFINER SQL function checking the caller's
+row in `profiles_private`; referenced by admin RLS policies (e.g., viewing
+pending applications) so the flag itself never needs to be broadly readable.
+
+**Constraints (plain schema, no privilege needed):** one *active* offer per
+helper per request and one *pending/approved* application per user per kind
+(partial unique indexes); one rating per request (PK); stars 1–5 (CHECK);
+professional application requires already-approved identity (INSERT policy);
+offer not on own request (INSERT policy).
 
 ---
 
@@ -194,15 +245,31 @@ Two private buckets; access via storage RLS policies keyed to the same user JWT:
 
 | Bucket | Contents | Write | Read |
 |---|---|---|---|
-| `request-photos` | Request images | Request owner, into their own folder (`{user_id}/…`) | Any signed-in user (photos are part of the public request card) |
+| `request-photos` | Request images | Any **identity-verified** user, into their own folder (`{user_id}/…`) | Any signed-in user |
 | `verification-docs` | ID photos, certificates | Applicant, into their own folder | Applicant + admins only |
+
+Two honest notes on `request-photos`:
+
+- The write rule says *identity-verified user*, not *request owner*, because
+  photos are uploaded **before** the request row exists (see §8.3) — at upload
+  time there is nothing to own. The verified-only gate (one denormalized boolean)
+  keeps unverified accounts from using the bucket as free file hosting; per-object
+  size limits and a MIME allowlist bound abuse; orphan cleanup and per-user quota
+  are named in the scale document.
+- The read rule is *broader than request visibility*: a user who saw a request
+  while it was open could keep fetching its photos after an admin hides it,
+  because storage policies do not track the parent request's state. This is an
+  accepted MVP limitation, parallel to spec §9.3: photo paths are unguessable
+  UUIDs, hiding is feed removal (not secrecy), and policy-level tightening is
+  listed in the security document.
 
 **Uploads go directly from the browser to Supabase Storage** (authenticated with
 the user's JWT), and only the resulting storage path is sent to the Server
-Action. Rationale: Server Actions have a ~1 MB request-body default and Vercel
-serverless functions cap payloads around 4.5 MB — proxying multi-megabyte photos
-through the app server would hit both limits and double the bandwidth. Client-side
-size/type checks (and a storage-side size limit) keep uploads bounded.
+Action — which passes it to `create_request_with_photos`, where the DB verifies
+each path sits in the caller's own folder. Rationale for direct upload: Server
+Actions have a ~1 MB request-body default and Vercel serverless functions cap
+payloads around 4.5 MB — proxying multi-megabyte photos through the app server
+would hit both limits and double the bandwidth.
 
 ---
 
@@ -227,8 +294,20 @@ spec §4.1); the true enforcement is in the DB.
 | `/admin` | Verification queue (approve/reject with note) + moderation list (hide/unhide, revoke) | Admin (RLS-backed) |
 | `/emergency` | **Static** emergency numbers page, `tel:` links only | Public |
 
-The emergency page is a static route with zero data access — no client JS beyond
-the layout, no form, no table behind it (product spec §11 hard boundary).
+Two route-level mechanisms worth naming:
+
+- **The emergency page is *provably* static** (product spec §11 hard boundary),
+  not just static by intention: it sits in the public route group whose layout
+  reads no cookies, it is **excluded from the middleware matcher** (no session
+  refresh, no Supabase call on its behalf), and it declares
+  `export const dynamic = 'force-static'` so any regression to dynamic rendering
+  fails the build. The session-aware navigation lives in the signed-in group's
+  layout, not the root layout — which is what keeps the root safe for static
+  routes.
+- **First-login onboarding needs no extra page:** the signed-in group's layout
+  redirects any user whose profile has an empty display name to `/profile`,
+  which doubles as the onboarding step of spec §8.1 (set name, capture
+  location).
 
 ---
 
@@ -236,33 +315,41 @@ the layout, no form, no table behind it (product spec §11 hard boundary).
 
 Every mutation is a Server Action following one pattern:
 **zod-validate input → cheap guard (fail fast, friendly Hebrew error) → Supabase
-call (RLS/RPC is the real gate) → `revalidatePath` → typed result to the form.**
+call (RLS/RPC is the real gate) → revalidate the concrete affected paths → typed
+result to the form.** (`revalidatePath` is always called with concrete URLs —
+`` revalidatePath(`/requests/${id}`) `` plus affected lists like `/requests`,
+`/my/offers` — never with a bare dynamic pattern, which Next.js treats as a
+literal non-matching URL.)
 
 | Action | Validates | DB effect |
 |---|---|---|
-| `signUp`, `signIn`, `signOut` | credentials schema | Supabase Auth; profile row via trigger |
-| `updateProfile` | name/phone/location schema | update own `profiles` row (RLS: own row only) |
-| `submitIdentityApplication` | application schema | insert `verification_applications` (kind=identity) |
-| `submitProfessionalApplication` | application schema | insert `verification_applications` (kind=professional) |
-| `createRequest` | request schema (≥1 photo path) | insert `help_requests` + `request_photos` |
-| `updateRequest` | request schema | update own request (RLS: owner + status ∈ {open, has_offers}) |
-| `cancelRequest` | id | update status → cancelled (RLS: owner, pre-completion) + close offers (trigger/RPC detail in doc 3) |
-| `markPaid` | id | set paid flag (RLS: owner, completed+, paid type) |
-| `createOffer` | offer schema | insert `offers` (RLS: identity-verified, not own request, no duplicate active) |
+| `signUp`, `signIn`, `signOut` | credentials schema | Supabase Auth; profile rows via trigger |
+| `updateProfile` | name/phone/location schema | update own `profiles` + `profiles_private` rows (RLS: own row only) |
+| `submitIdentityApplication` | application schema | insert `verification_applications` (kind=identity) **+ save phone to own `profiles_private` row** (spec §8.2 — the contact-reveal RPC depends on it) |
+| `submitProfessionalApplication` | application schema | insert `verification_applications` (kind=professional; INSERT policy requires approved identity) |
+| `createRequest` | request schema (≥1 photo path) | **RPC `create_request_with_photos`** |
+| `updateRequest` | request schema | update own request — content columns only (RLS: owner + status ∈ {open, has_offers}; system columns trigger-guarded) |
+| `cancelRequest` | id | **RPC `cancel_request`** |
+| `markPaid` | id | set `is_paid` (RLS: owner; trigger scopes to post-completion, paid type) |
+| `createOffer` | offer schema | insert `offers` (RLS: identity-verified, not own request; partial unique index blocks duplicate active) |
 | `updateOffer`, `withdrawOffer` | offer schema / id | update own active offer (RLS) |
 | `assignOffer` | ids | **RPC `assign_offer`** |
 | `confirmCompletion` | id | **RPC `confirm_completion`** |
-| `submitRating` | stars/note schema | insert `ratings` (RLS: owner, status=completed; unique per request) |
-| `approveApplication`, `rejectApplication` | id + note | update application + set profile flags (RLS: admin) |
-| `hideRequest`, `unhideRequest`, `revokeVerification` | id (+kind) | moderation updates (RLS: admin) |
+| `submitRating` | stars/note schema | **RPC `submit_rating`** |
+| `approveApplication`, `rejectApplication` | id + note | **RPC `review_application`** |
+| `hideRequest`, `unhideRequest` | id | **RPC `set_request_hidden`** |
+| `revokeVerification` | user id + kind | **RPC `revoke_verification`** |
 
 Reads never go through actions: Server Components query Supabase directly and the
 contact reveal uses `get_counterpart_contact` (the only read RPC).
 
-**No REST/route-handler API layer exists.** The only route handler is the Supabase
-auth callback (`/auth/callback`) if the auth flow requires it. Rationale: Server
-Actions cover every mutation with less surface (no endpoint enumeration, origin
-checks built in), and no third party needs to call iHelp programmatically.
+**No REST/route-handler API layer exists.** With password-only auth and email
+confirmation disabled (§8.4), even the classic `/auth/callback` code-exchange
+route is unnecessary — `@supabase/ssr` sets the session cookies directly from the
+sign-in/sign-up Server Actions; the callback route appears only when email
+confirmation is switched on (the stated roadmap item). Rationale: Server Actions
+cover every mutation with less surface (no endpoint enumeration, origin checks
+built in), and no third party needs to call iHelp programmatically.
 
 ---
 
@@ -277,18 +364,27 @@ sequenceDiagram
     participant DB as Supabase Postgres (RLS)
 
     B->>N: GET /requests (session cookie)
-    N->>DB: select open, non-hidden requests (user JWT)
+    N->>DB: select open, non-hidden requests, newest-first cap (user JWT)
     DB-->>N: rows the RLS policies allow
-    N->>DB: select own profile (lat/lng)
+    N->>DB: select own profiles_private row (lat/lng — own-row policy)
     N->>N: Haversine in lib/geo.ts, sort by distance
     N-->>B: rendered HTML — "2.4 ק"מ ממך", no raw coordinates
 ```
 
 Distance is computed **in the Server Component**, so the browsing UI never
-receives raw coordinates of other users — only formatted distances. (Coordinates
-remain *queryable* by a signed-in API caller under MVP RLS; that accepted
-limitation and its mitigations are product spec §9.3 and the security doc's
-concern — the UI path simply doesn't add to it.)
+receives raw coordinates of other users — only formatted distances. (Request
+coordinates remain *queryable* by a signed-in API caller under MVP RLS — the
+accepted limitation of spec §9.3; profile home coordinates are **not**, thanks to
+the `profiles_private` split of §4.1.)
+
+**Distance sorting vs pagination — the explicit MVP resolution:** the database
+cannot `ORDER BY` a distance computed in application code, so the RSC fetches
+open requests with a hard newest-first cap (e.g., 200 rows — an order of
+magnitude above the spec's MVP scale), Haversine-sorts in memory, and paginates
+the sorted array server-side. When the cap becomes visible, the successor is
+DB-side distance (SQL Haversine expression with keyset pagination) — named in
+the scale document. This trades a bounded, well-understood limit for zero
+geo-infrastructure now.
 
 ### 8.2 Write path — making an offer
 
@@ -302,18 +398,20 @@ sequenceDiagram
     SA->>SA: zod parse → guard (signed in? verified?)
     SA->>DB: insert offer (user JWT)
     DB->>DB: RLS + constraints decide (the real gate)
-    DB->>DB: trigger: request open → has_offers
+    DB->>DB: definer trigger: request open → has_offers
     DB-->>SA: row or permission error
-    SA->>SA: revalidatePath('/requests/[id]')
+    SA->>SA: revalidatePath(`/requests/${id}`) + affected lists
     SA-->>B: typed result → Hebrew success/error message
 ```
 
 ### 8.3 Upload path — request photos
 
-Browser validates size/type → uploads directly to `request-photos` bucket with the
-user JWT (storage policy: own folder only) → receives storage path → submits the
-form with paths → `createRequest` stores the paths. Failed submissions leave
-orphaned objects at worst (bounded by size limits; cleanup noted in scale doc).
+Browser validates size/type → uploads directly to `request-photos` bucket with
+the user JWT (storage policy: identity-verified, own folder only) → receives
+storage paths → submits the form → `create_request_with_photos` inserts request
++ photo rows atomically and re-verifies each path is in the caller's folder.
+Failed submissions leave orphaned storage objects at worst (bounded by size
+limits; cleanup noted in the scale doc) — never a photo-less published request.
 
 ### 8.4 Auth/session flow
 
@@ -328,6 +426,21 @@ configuration; enabling it is a one-switch roadmap item.
 
 ## 9. Users, Permissions, and Enforcement Layers
 
+### 9.1 Who exists in the system
+
+One account type; capability tiers are unlocked by flags, and within a tier
+permissions are per-row (full matrix: product spec §9.2):
+
+| User class | May do |
+|---|---|
+| Anonymous visitor | Landing, login/signup, emergency page |
+| Signed-in, unverified | Browse requests and helper profiles; apply for identity verification; edit own profile |
+| Identity-verified | + Post/edit/cancel own requests, offer on others' requests, assign, dual-complete, rate, mark paid, see assigned counterpart's contact |
+| + Professional badge | Same capabilities; a reviewed credential badge shown beside their offers |
+| Admin (`is_admin` in `profiles_private`) | + Review verification applications, hide/unhide requests, revoke verifications — via the admin RPCs only, never blanket table access |
+
+### 9.2 Enforcement in depth
+
 The product spec §9.2 matrix is enforced in depth — each layer catches what the
 one above misses, and only the last one is trusted:
 
@@ -338,7 +451,8 @@ one above misses, and only the last one is trusted:
 3. **Server Action guards** — zod validation + fast permission pre-checks for
    friendly Hebrew errors. Convenience only.
 4. **Database** — RLS policies (per-row, per-action), unique/check constraints,
-   and the three SECURITY DEFINER RPCs with in-body permission checks. **This
+   and the enumerated SECURITY DEFINER inventory of §4.2 (nine RPCs, three
+   trigger functions, one helper — each with in-body permission checks). **This
    layer is the authority**; a crafted request that skips layers 1–3 still hits
    it with nothing but the caller's own JWT.
 
@@ -378,11 +492,12 @@ grants an attacker nothing beyond what any signed-up user already has.
 
 ```
 app/
-  (public)/            # login, signup, emergency, landing
+  (public)/            # login, signup, emergency, landing — layout reads no cookies
   (app)/               # signed-in shell: requests, my/*, profile, helpers, verification
   admin/               # admin dashboard (also RLS-guarded)
-  auth/callback/       # Supabase auth callback route handler
-  layout.tsx           # html dir="rtl" lang="he", nav
+  layout.tsx           # html dir="rtl" lang="he" only — nav lives in (app) layout
+                       # note: no auth/callback route — password auth with email
+                       # confirmation off needs none; it appears with that roadmap item
 lib/
   supabase/server.ts   # per-request server client (cookies)
   supabase/client.ts   # browser client (auth, storage upload)
