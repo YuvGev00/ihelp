@@ -126,7 +126,7 @@ erDiagram
         uuid id PK
         uuid user_id FK
         text kind "identity | professional"
-        text status "pending | approved | rejected"
+        text status "pending | approved | rejected | revoked"
         text full_name
         text self_description
         text admin_note
@@ -154,6 +154,7 @@ erDiagram
         text status "active | selected | closed | withdrawn"
         text message
         text proposed_terms "nullable — paid requests"
+        text request_title "snapshot for my-offers after parent turns invisible"
     }
     ratings {
         uuid request_id PK "unique - one rating per request"
@@ -200,10 +201,12 @@ Notes on the shape:
 A recurring Postgres reality shapes this section: **RLS is row-level.** It cannot
 constrain *which columns* an UPDATE changes, compare old and new values, or
 authorize writing rows the caller does not own. Every rule with one of those
-shapes therefore lives in a small, enumerated set of `SECURITY DEFINER` functions
-(each with an in-body permission check and a pinned `search_path`) — this table
-is the complete list the security document audits. Everything else is plain RLS
-plus constraints.
+shapes therefore lives in a small, enumerated set of database functions — most
+`SECURITY DEFINER` with an in-body permission check, two trigger functions
+deliberately invoker-rights (their mechanism depends on seeing the caller's
+role), all with a pinned `search_path`. This section is the complete privileged-
+code list the security document audits. Everything else is plain RLS plus
+constraints.
 
 **RPCs (called from Server Actions; the write path for every state transition):**
 
@@ -217,22 +220,27 @@ plus constraints.
 | `review_application(application_id, verdict, note)` | Admin check; updates the application row and the applicant's profile flags together | Two-table atomic write; and an admin UPDATE policy on `profiles` would (row-level!) grant admins write to *every* profile column including `is_admin` — exactly what spec §4.4 forbids |
 | `revoke_verification(user_id, kind)` | Admin check; clears the identity or professional flag (and marks the approval revoked in the audit trail) | Same column-scoping argument as above |
 | `set_request_hidden(request_id, hidden)` | Admin check; touches only `is_hidden` | Guarantees moderation "leaves the lifecycle state untouched" (spec §8.6) by construction |
+| `mark_paid(request_id)` | Owner check; flips `is_paid` once, post-completion, paid type only | A second permissive UPDATE policy would OR with the content-edit policy and reopen edits on finished jobs — permissive policies OR their USING/CHECK clauses independently |
 | `get_counterpart_contact(request_id)` | Read-only: returns the other party's display name + phone (from `profiles_private`), only to the request owner or selected helper, from *assigned* onward | Column-level conditional exposure — row-level SELECT policies cannot reveal one column to one pair of users per row (spec §8.4) |
 
-**SECURITY DEFINER trigger functions (invisible plumbing, same audit list):**
+**Trigger functions (invisible plumbing, same audit list):**
 
-| Trigger | What it does | Why privileged |
+| Trigger | What it does | Rights model |
 |---|---|---|
-| On `auth.users` insert | Creates the `profiles` + `profiles_private` rows | Runs during signup, before any session exists |
-| On `offers` insert/status change | Maintains request `open ↔ has_offers` | A *helper's* offer insert must update the *requester's* request row — the owner-only UPDATE policy would match zero rows without definer rights |
-| BEFORE UPDATE on `help_requests` | Rejects changes to system columns (`status`, `is_hidden`, `assigned_offer_id`, `completed_by_*`, `*_at`) unless the write comes from the privileged RPC path; scopes `is_paid` to owner + post-completion | RLS cannot constrain which columns change — without this, a crafted owner PATCH could set `status='rated'` directly, bypassing the state machine |
+| On `auth.users` insert | Creates the `profiles` + `profiles_private` rows | SECURITY DEFINER — runs during signup, before any session exists |
+| On `offers` insert/status change | Maintains request `open ↔ has_offers` | SECURITY DEFINER — a *helper's* offer insert must update the *requester's* request row; the owner-only UPDATE policy would match zero rows without definer rights |
+| Column guard, BEFORE UPDATE on `profiles`, `profiles_private`, `help_requests`, `offers` | Rejects changes to protected columns (verification flags, `is_admin`, request system columns incl. `is_paid`, offer identity columns) coming from role `authenticated` | **Deliberately invoker-rights**: the mechanism *is* "check `current_user`" — the caller's role must be visible; definer RPCs run as the function owner and pass through. `search_path` pinned regardless |
+| Offer-insert prep, BEFORE INSERT on `offers` | Normalizes `created_at` and snapshots the request title onto the offer | Invoker-rights — the parent request is visible to the inserter by policy |
 
 **Helpers (SECURITY DEFINER lookups used inside policies):** `is_admin()` (reads
 `profiles_private` so the flag never needs to be broadly readable),
 `is_identity_verified()` (one-boolean gate checks), and `is_selected_helper()`
 (breaks the RLS policy recursion between `help_requests` and `offers` — two
 tables whose SELECT policies reference each other would otherwise raise
-Postgres's "infinite recursion detected in policy").
+Postgres's "infinite recursion detected in policy"). One **definer view**,
+`helper_ratings`, is the public rating read surface: it exposes stars + note
+per helper without the `rater_id`/`request_id` linkage the base table carries —
+the column-slicing tool RLS lacks.
 
 **Constraints (plain schema, no privilege needed):** one *active* offer per
 helper per request and one *pending/approved* application per user per kind
@@ -266,10 +274,15 @@ Two honest notes on `request-photos`:
   UUIDs, hiding is feed removal (not secrecy), and policy-level tightening is
   listed in the security document.
 
+**Downloads:** both buckets being private, images are rendered via **bulk signed
+URLs** created by the Server Component per page (1-hour expiry) — the same
+storage policies authorize the signing, and URLs expire instead of living
+forever in the HTML.
+
 **Uploads go directly from the browser to Supabase Storage** (authenticated with
 the user's JWT), and only the resulting storage path is sent to the Server
 Action — which passes it to `create_request_with_photos`, where the DB verifies
-each path sits in the caller's own folder. Rationale for direct upload: Server
+each path sits in the caller's own folder and is a real uploaded object. Rationale for direct upload: Server
 Actions have a ~1 MB request-body default and Vercel serverless functions cap
 payloads around 4.5 MB — proxying multi-megabyte photos through the app server
 would hit both limits and double the bandwidth.
@@ -333,7 +346,7 @@ literal non-matching URL.)
 | `createRequest` | request schema (≥1 photo path) | **RPC `create_request_with_photos`** |
 | `updateRequest` | request schema | update own request — content columns only (RLS: owner + status ∈ {open, has_offers}; system columns trigger-guarded) |
 | `cancelRequest` | id | **RPC `cancel_request`** |
-| `markPaid` | id | set `is_paid` (RLS: owner; trigger scopes to post-completion, paid type) |
+| `markPaid` | id | **RPC `mark_paid`** |
 | `createOffer` | offer schema | insert `offers` (RLS: identity-verified, not own request; partial unique index blocks duplicate active) |
 | `updateOffer`, `withdrawOffer` | offer schema / id | update own active offer (RLS) |
 | `assignOffer` | ids | **RPC `assign_offer`** |
@@ -367,7 +380,7 @@ sequenceDiagram
     participant DB as Supabase Postgres (RLS)
 
     B->>N: GET /requests (session cookie)
-    N->>DB: select open, non-hidden requests, newest-first cap (user JWT)
+    N->>DB: select open/has_offers, non-hidden requests, newest-first cap (user JWT)
     DB-->>N: rows the RLS policies allow
     N->>DB: select own profiles_private row (lat/lng — own-row policy)
     N->>N: Haversine in lib/geo.ts, sort by distance
@@ -454,10 +467,11 @@ one above misses, and only the last one is trusted:
 3. **Server Action guards** — zod validation + fast permission pre-checks for
    friendly Hebrew errors. Convenience only.
 4. **Database** — RLS policies (per-row, per-action), unique/check constraints,
-   and the enumerated SECURITY DEFINER inventory of §4.2 (nine RPCs, three
-   trigger functions, three policy helpers — each with in-body permission
-   checks). **This layer is the authority**; a crafted request that skips layers
-   1–3 still hits it with nothing but the caller's own JWT.
+   and the enumerated privileged-code inventory of §4.2 (ten RPCs, four trigger
+   functions, three policy helpers, one definer view — each with in-body
+   permission checks where applicable). **This layer is the authority**; a
+   crafted request that skips layers 1–3 still hits it with nothing but the
+   caller's own JWT.
 
 **The service-role key is used by zero lines of application code.** Everything the
 app does — including admin actions — runs as the signed-in user through RLS
@@ -481,8 +495,11 @@ grants an attacker nothing beyond what any signed-up user already has.
 - **Error handling:**
   - Server Actions return a typed `{ ok, fieldErrors?, formError? }` result;
     forms render Hebrew messages next to fields.
-  - RLS denials surface as Postgres errors → mapped to one generic Hebrew
-    "אין הרשאה" message (no information leak about row existence).
+  - Permission denials arrive in two shapes and both map to one generic Hebrew
+    "אין הרשאה" message: WITH CHECK/constraint/RPC violations raise Postgres
+    errors, while rows filtered by an UPDATE policy's USING clause are
+    *silently skipped* (zero affected rows, no error) — so every direct update
+    chains `.select()` and treats an empty result as a denial.
   - `error.tsx` boundaries per route group catch render failures;
     `not-found.tsx` covers missing/unauthorized rows (RLS makes them
     indistinguishable — deliberately).

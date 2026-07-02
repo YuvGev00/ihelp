@@ -31,6 +31,12 @@ whole design leans on; an enum makes an invalid state a *type error*, and the
 enum definition is self-documenting in any DB inspector. (Trade-off accepted:
 adding a value needs a migration — fine, the sets are stable by design.)
 
+One deliberate exception: `help_requests.category` stays `text + CHECK`. It is
+*content*, not a state machine — a list expected to grow with the product — and
+`text + CHECK` keeps additions a small data-shaped migration. The app-side
+canonical list is `lib/categories.ts` (keys + Hebrew labels); the DB CHECK
+mirrors its keys.
+
 ### 1.2 Tables
 
 ```sql
@@ -39,8 +45,8 @@ create table public.profiles (
   id                   uuid primary key references auth.users(id) on delete cascade,
   display_name         text not null default ''
                        check (char_length(display_name) <= 40),
-  is_identity_verified boolean not null default false,   -- set only by review_application
-  is_professional      boolean not null default false,   -- set only by review_application
+  is_identity_verified boolean not null default false,   -- set only by review_application / revoke_verification
+  is_professional      boolean not null default false,   -- set only by review_application / revoke_verification
   created_at           timestamptz not null default now()
 );
 
@@ -51,8 +57,8 @@ create table public.profiles_private (
   phone      text check (phone is null or phone ~ '^0\d{8,9}$'),
   lat        double precision check (lat between -90 and 90),
   lng        double precision check (lng between -180 and 180),
-  is_admin   boolean not null default false,             -- set only manually in SQL
-  updated_at timestamptz not null default now()
+  constraint location_all_or_none check ((lat is null) = (lng is null)),
+  is_admin   boolean not null default false              -- set only manually in SQL
 );
 
 create table public.verification_applications (
@@ -62,7 +68,13 @@ create table public.verification_applications (
   status           public.application_status not null default 'pending',
   full_name        text not null check (char_length(full_name) between 2 and 60),
   self_description text not null default '' check (char_length(self_description) <= 500),
+  -- the phone is part of the reviewed identity application (spec §8.2) — the
+  -- admin must be able to see it via applications_select; on approval it is
+  -- copied to profiles_private by review_application
+  phone            text check (phone is null or phone ~ '^0\d{8,9}$'),
+  constraint identity_requires_phone check (kind <> 'identity' or phone is not null),
   doc_path         text,            -- ID photo / certificate in verification-docs
+  constraint professional_requires_doc check (kind <> 'professional' or doc_path is not null),
   admin_note       text,
   decided_by       uuid references public.profiles(id),
   decided_at       timestamptz,
@@ -85,25 +97,24 @@ create table public.help_requests (
                    'tech_help','errands','gardening','pets','other')),
   payment_type  public.payment_type not null,
   amount        numeric(10,2),
-  -- paid requests carry a positive amount; volunteer requests carry none
+  -- paid requests carry a positive bounded amount; volunteer requests carry none
   constraint amount_matches_type check (
-    (payment_type = 'paid'      and amount is not null and amount > 0) or
+    (payment_type = 'paid'      and amount is not null and amount > 0 and amount <= 99999.99) or
     (payment_type = 'volunteer' and amount is null)
   ),
-  -- request location, confirmed by the requester at publish time.
-  -- Nullable: a requester who declined geolocation can still post; their
-  -- request simply sorts last and shows no distance.
-  lat           double precision check (lat between -90 and 90),
-  lng           double precision check (lng between -180 and 180),
-  constraint location_all_or_none check ((lat is null) = (lng is null)),
+  -- request location, confirmed by the requester at publish time — NOT NULL:
+  -- the spec (C3, §8.3, §9.3) makes location part of every request; a request
+  -- helpers cannot locate defeats the distance-sorted marketplace (G3). The
+  -- posting form captures/confirms it (profile default or on-the-spot prompt).
+  lat           double precision not null check (lat between -90 and 90),
+  lng           double precision not null check (lng between -180 and 180),
   status        public.request_status not null default 'open',
   is_hidden     boolean not null default false,          -- admin moderation flag
   assigned_offer_id      uuid,                           -- FK added below (circular)
   completed_by_requester boolean not null default false,
   completed_by_helper    boolean not null default false,
-  is_paid       boolean not null default false,          -- owner's record-keeping marker
+  is_paid       boolean not null default false,          -- owner's marker, via mark_paid RPC
   created_at    timestamptz not null default now(),
-  updated_at    timestamptz not null default now(),
   assigned_at   timestamptz,
   completed_at  timestamptz,
   rated_at      timestamptz,
@@ -117,8 +128,11 @@ create table public.offers (
   status         public.offer_status not null default 'active',
   message        text not null check (char_length(message) between 5 and 1000),
   proposed_terms text check (proposed_terms is null or char_length(proposed_terms) <= 300),
-  created_at     timestamptz not null default now(),
-  updated_at     timestamptz not null default now()
+  -- snapshot set by trigger T4 at insert: /my/offers must render meaningfully
+  -- even after the offerer loses SELECT on the parent request (assigned to
+  -- someone else / cancelled / hidden — spec §9.2 later-state visibility)
+  request_title  text not null default '',
+  created_at     timestamptz not null default now()
 );
 
 -- Spec §9.2: one *active* offer per helper per request. Withdrawn/closed rows
@@ -229,14 +243,14 @@ the `auth.users` cascade.
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `private_select_own` (SELECT) | `user_id = auth.uid()` | Phone and home coordinates are readable by their owner only (§9.3); the contact RPC is the sole cross-user path |
-| `private_update_own` (UPDATE) | USING/CHECK `user_id = auth.uid()` | Owner edits phone/location; `is_admin` is column-guard-protected — **without the guard, this policy would let any user set `is_admin = true` on their own row** |
+| `private_update_own` (UPDATE) | USING/CHECK `user_id = auth.uid()` | Owner edits phone/location; `is_admin` is column-guard-protected — **without the guard, this policy would let any user set `is_admin = true` on their own row**. The guard also blocks *removing* a phone once set (change allowed, null not) — the contact-reveal flow must never surface an empty phone for a verified user |
 
 ### `verification_applications`
 
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `applications_select` (SELECT) | `user_id = auth.uid() or public.is_admin()` | Applicant sees own history + status; admins see the queue (§9.2) |
-| `applications_insert` (INSERT) | `user_id = auth.uid() and (kind = 'identity' or public.is_identity_verified())` | Anyone applies for identity; professional requires approved identity (§9.2); the partial unique index blocks a second open application |
+| `applications_insert` (INSERT) | `user_id = auth.uid() and (kind = 'identity' or public.is_identity_verified()) and status = 'pending' and admin_note is null and decided_by is null and decided_at is null and (doc_path is null or doc_path like auth.uid()::text \|\| '/%')` | Anyone applies for identity; professional requires approved identity (§9.2); the partial unique index blocks a second open application. The `status`/`decided_*` pins make "decisions go through `review_application` only" true *by construction* — without them a crafted insert forges an already-approved audit row; the `doc_path` prefix pin stops referencing someone else's ID photo/certificate |
 
 No UPDATE/DELETE for users: applications are immutable once submitted (re-apply
 creates a new row — that *is* the audit trail); decisions go through
@@ -247,8 +261,7 @@ creates a new row — that *is* the audit trail); decisions go through
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `requests_select` (SELECT) | `(status in ('open','has_offers') and not is_hidden) or requester_id = auth.uid() or public.is_admin() or public.is_selected_helper(assigned_offer_id)` | The §9.2 view rule verbatim: everyone sees the live feed minus hidden; owner, selected helper, and admins also see later states and hidden rows. The selected-helper check goes through the definer helper to avoid policy recursion with `offers` |
-| `requests_update_own` (UPDATE) | USING `requester_id = auth.uid() and status in ('open','has_offers')` CHECK `requester_id = auth.uid()` | Owner edits content while editable (§9.2); which *columns* may change is the guard trigger's job |
-| `requests_update_paid` (UPDATE) | USING `requester_id = auth.uid() and status in ('completed','rated') and payment_type = 'paid'` CHECK same | Owner may flip `is_paid` after completion (§9.2); guard trigger pins this path to that single column |
+| `requests_update_own` (UPDATE) | USING `requester_id = auth.uid() and status in ('open','has_offers')` CHECK `requester_id = auth.uid()` | Owner edits content while editable (§9.2); which *columns* may change is the guard trigger's job. **This is deliberately the only UPDATE policy on the table**: permissive policies OR their USING and WITH CHECK clauses independently, so a second "mark paid" policy would let a completed-paid request pass its USING while the content-edit policy's lax CHECK accepts arbitrary new content — reopening edits on finished jobs. The paid marker therefore goes through the `mark_paid` RPC instead |
 
 No INSERT (RPC only), no DELETE (cancellation is a state, not a row removal —
 offers and ratings reference the row forever).
@@ -258,7 +271,7 @@ offers and ratings reference the row forever).
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `offers_select` (SELECT) | `helper_id = auth.uid() or exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id = auth.uid())` | Sealed-bid visibility: owner of the offer + owner of the request, nobody else — including admins (§9.2) |
-| `offers_insert` (INSERT) | `helper_id = auth.uid() and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | Verified users only; not on own request; only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index |
+| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | Verified users only; not on own request; only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index) |
 | `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn')` | Edit or withdraw while active. The CHECK's closed set is what stops a helper PATCHing their own offer to `selected` — the only two states a helper can write are the two they own (§9.2). `request_id`, `helper_id`, `created_at` are column-guard-protected (below) — otherwise an UPDATE could *re-point* an active offer at a different request, bypassing every INSERT-time check (own-request, open-status, hidden) |
 
 No DELETE — withdrawn offers stay as history (and as re-offer bookkeeping).
@@ -278,7 +291,19 @@ only, spec-consistent).
 
 | Policy | SQL condition | Enforces |
 |---|---|---|
-| `ratings_select` (SELECT) | `true` (authenticated) | Ratings are the public trust signal (spec §8.5) |
+| `ratings_select` (SELECT) | `helper_id = auth.uid() or rater_id = auth.uid() or public.is_admin()` | The *base table* is party-scoped: it carries `rater_id` + `request_id`, and a `true` policy would let any signed-in user dump who-rated-whom platform-wide — linkage the parent (rated, RLS-invisible) request no longer exposes. Third parties read ratings through the view below |
+
+```sql
+-- The public rating surface (spec §9.2 "View rating | any signed-in user"):
+-- stars + note + when, per helper — WITHOUT rater/request linkage. Postgres
+-- views execute with the owner's rights by default, which is exactly the
+-- column-slicing tool RLS lacks. Rater identity is deliberately not shown to
+-- third parties; the helper can infer it from the request context anyway.
+create view public.helper_ratings
+  with (security_invoker = false) as
+  select helper_id, stars, note, created_at from public.ratings;
+grant select on public.helper_ratings to authenticated;
+```
 
 No INSERT (RPC only — the insert must atomically advance the request to
 *rated*), no UPDATE/DELETE (immutable, spec §9.1).
@@ -310,12 +335,20 @@ accepted limitation documented in architecture §5.
 
 ---
 
-## 3. SECURITY DEFINER Functions — full bodies
+## 3. Database Functions — full bodies (the privileged-code inventory)
 
-Conventions for all nine: `security definer set search_path = public`, execute
+Conventions for all ten: `security definer set search_path = public`, execute
 revoked from `public`/`anon` and granted to `authenticated`, permission checks
 first, business errors raised with stable codes the app maps to Hebrew
 (`P0001` + message in `not_found | forbidden | invalid_state | …`).
+
+**Error-ordering rule (no existence leaks):** RPCs read with definer rights, so
+a naive check order would reveal rows RLS hides — e.g., raising `invalid_state`
+for a *hidden* request tells a probing caller the row exists. The rule: **raise
+`not_found` whenever the caller could not SELECT the row under the policies**
+(non-owner, non-party), *before* any state check; `invalid_state` and
+`forbidden` are only ever raised to callers who can already see the row. This
+keeps the §10 promise — denied and missing are indistinguishable.
 
 ```sql
 -- 3.1 Create request + photos atomically; enforce ≥1 photo and path ownership.
@@ -329,22 +362,37 @@ language plpgsql security definer set search_path = public as $$
 declare
   v_id uuid;
   v_path text;
+  v_paths text[];
 begin
   if not public.is_identity_verified() then
     raise exception 'forbidden';
   end if;
-  if p_photo_paths is null or array_length(p_photo_paths, 1) < 1 then
+  if p_lat is null or p_lng is null then
+    raise exception 'location_required';
+  end if;
+
+  -- deduplicate, then bound: 1–5 distinct photos
+  select array_agg(distinct p) into v_paths from unnest(p_photo_paths) as p;
+  if v_paths is null or array_length(v_paths, 1) < 1 then
     raise exception 'photos_required';
   end if;
-  if array_length(p_photo_paths, 1) > 5 then
+  if array_length(v_paths, 1) > 5 then
     raise exception 'too_many_photos';
   end if;
-  foreach v_path in array p_photo_paths loop
+  foreach v_path in array v_paths loop
     -- photos must live in the caller's own storage folder
     if v_path not like auth.uid()::text || '/%' then
       raise exception 'forbidden';
     end if;
   end loop;
+  -- every path must be a real object in the right bucket (definer read of
+  -- storage.objects): blocks nonexistent paths and verification-docs paths,
+  -- which share the same {uid}/ folder convention
+  if (select count(*) from storage.objects
+      where bucket_id = 'request-photos' and name = any(v_paths))
+     <> array_length(v_paths, 1) then
+    raise exception 'photo_not_uploaded';
+  end if;
 
   insert into public.help_requests
     (requester_id, title, description, category, payment_type, amount, lat, lng)
@@ -354,7 +402,7 @@ begin
 
   insert into public.request_photos (request_id, storage_path, position)
   select v_id, u.path, u.ord - 1
-  from unnest(p_photo_paths) with ordinality as u(path, ord);
+  from unnest(v_paths) with ordinality as u(path, ord);
 
   return v_id;
 end $$;
@@ -368,8 +416,10 @@ declare v_requester uuid;
 begin
   select requester_id into v_requester
     from public.help_requests where id = p_request_id for update;
-  if v_requester is null then raise exception 'not_found'; end if;
-  if v_requester <> auth.uid() then raise exception 'forbidden'; end if;
+  -- error-ordering rule: non-owner gets not_found, same as a missing row
+  if v_requester is null or v_requester <> auth.uid() then
+    raise exception 'not_found';
+  end if;
 
   update public.help_requests
      set status = 'assigned', assigned_offer_id = p_offer_id, assigned_at = now()
@@ -397,16 +447,19 @@ begin
   select * into v_req from public.help_requests
     where id = p_request_id for update;
   if not found then raise exception 'not_found'; end if;
-  if v_req.status <> 'assigned' then raise exception 'invalid_state'; end if;
 
   select helper_id into v_helper from public.offers where id = v_req.assigned_offer_id;
+  -- error-ordering rule: party check BEFORE state check — a non-party probing
+  -- a hidden/cancelled id must learn nothing, not even "wrong state"
+  if auth.uid() <> v_req.requester_id and (v_helper is null or auth.uid() <> v_helper) then
+    raise exception 'not_found';
+  end if;
+  if v_req.status <> 'assigned' then raise exception 'invalid_state'; end if;
 
   if auth.uid() = v_req.requester_id then
     update public.help_requests set completed_by_requester = true where id = p_request_id;
-  elsif auth.uid() = v_helper then
-    update public.help_requests set completed_by_helper = true where id = p_request_id;
   else
-    raise exception 'forbidden';
+    update public.help_requests set completed_by_helper = true where id = p_request_id;
   end if;
 
   update public.help_requests
@@ -423,8 +476,9 @@ declare v_requester uuid;
 begin
   select requester_id into v_requester
     from public.help_requests where id = p_request_id for update;
-  if v_requester is null then raise exception 'not_found'; end if;
-  if v_requester <> auth.uid() then raise exception 'forbidden'; end if;
+  if v_requester is null or v_requester <> auth.uid() then
+    raise exception 'not_found';   -- error-ordering rule
+  end if;
 
   update public.help_requests
      set status = 'cancelled', cancelled_at = now()
@@ -447,8 +501,9 @@ declare
 begin
   select * into v_req from public.help_requests
     where id = p_request_id for update;
-  if not found then raise exception 'not_found'; end if;
-  if v_req.requester_id <> auth.uid() then raise exception 'forbidden'; end if;
+  if not found or v_req.requester_id <> auth.uid() then
+    raise exception 'not_found';   -- error-ordering rule
+  end if;
   if v_req.status <> 'completed' then raise exception 'invalid_state'; end if;
 
   select helper_id into v_helper from public.offers where id = v_req.assigned_offer_id;
@@ -474,6 +529,18 @@ begin
     where id = p_application_id for update;
   if not found then raise exception 'not_found'; end if;
   if v_app.status <> 'pending' then raise exception 'invalid_state'; end if;
+  -- a rejection must carry a reason (spec §4.1: "rejects with a note")
+  if not p_approve and nullif(trim(p_note), '') is null then
+    raise exception 'note_required';
+  end if;
+  -- a professional badge on a revoked identity is meaningless: re-check the
+  -- gate at decision time, not just at application time
+  if p_approve and v_app.kind = 'professional' and not exists (
+    select 1 from public.profiles
+    where id = v_app.user_id and is_identity_verified
+  ) then
+    raise exception 'invalid_state';
+  end if;
 
   update public.verification_applications
      set status     = case when p_approve then 'approved' else 'rejected' end,
@@ -485,6 +552,8 @@ begin
   if p_approve then
     if v_app.kind = 'identity' then
       update public.profiles set is_identity_verified = true where id = v_app.user_id;
+      -- the reviewed phone becomes the live contact channel (spec §8.2)
+      update public.profiles_private set phone = v_app.phone where user_id = v_app.user_id;
     else
       update public.profiles set is_professional = true where id = v_app.user_id;
     end if;
@@ -509,9 +578,13 @@ begin
     update public.profiles
        set is_identity_verified = false, is_professional = false
      where id = p_user_id;
+    -- professional rides on identity: revoke approved AND pending professional
+    -- applications — otherwise a surviving pending row could later be approved
+    -- onto a revoked identity
     update public.verification_applications
        set status = 'revoked', decided_by = auth.uid(), decided_at = now()
-     where user_id = p_user_id and kind = 'professional' and status = 'approved';
+     where user_id = p_user_id and kind = 'professional'
+       and status in ('approved','pending');
   else
     update public.profiles set is_professional = false where id = p_user_id;
   end if;
@@ -528,7 +601,27 @@ begin
   if not found then raise exception 'not_found'; end if;
 end $$;
 
--- 3.9 The only read RPC: counterpart contact, post-assignment, parties only.
+-- 3.9 Paid marker: RPC rather than an UPDATE policy on purpose — a second
+-- permissive UPDATE policy on help_requests would OR its USING with the
+-- content-edit policy's lax CHECK and reopen content edits on finished jobs.
+create or replace function public.mark_paid(p_request_id uuid)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare v_req public.help_requests%rowtype;
+begin
+  select * into v_req from public.help_requests
+    where id = p_request_id for update;
+  if not found or v_req.requester_id <> auth.uid() then
+    raise exception 'not_found';   -- error-ordering rule
+  end if;
+  if v_req.status not in ('completed','rated')
+     or v_req.payment_type <> 'paid' or v_req.is_paid then
+    raise exception 'invalid_state';
+  end if;
+  update public.help_requests set is_paid = true where id = p_request_id;
+end $$;
+
+-- 3.10 The only read RPC: counterpart contact, post-assignment, parties only.
 create or replace function public.get_counterpart_contact(p_request_id uuid)
 returns table (display_name text, phone text)
 language plpgsql security definer set search_path = public as $$
@@ -539,15 +632,17 @@ declare
 begin
   select * into v_req from public.help_requests where id = p_request_id;
   if not found then raise exception 'not_found'; end if;
-  if v_req.status not in ('assigned','completed','rated') then
-    raise exception 'invalid_state';
-  end if;
 
   select helper_id into v_helper from public.offers where id = v_req.assigned_offer_id;
-
+  -- error-ordering rule: party check first — probing a hidden/cancelled id
+  -- must not reveal that the row exists or what state it is in
   if auth.uid() = v_req.requester_id then v_other := v_helper;
-  elsif auth.uid() = v_helper then v_other := v_req.requester_id;
-  else raise exception 'forbidden';
+  elsif v_helper is not null and auth.uid() = v_helper then v_other := v_req.requester_id;
+  else raise exception 'not_found';
+  end if;
+
+  if v_req.status not in ('assigned','completed','rated') then
+    raise exception 'invalid_state';
   end if;
 
   return query
@@ -558,7 +653,7 @@ begin
 end $$;
 ```
 
-### Triggers (three functions)
+### Triggers (four functions)
 
 ```sql
 -- T1: signup — create both profile rows.
@@ -604,8 +699,10 @@ create trigger on_offer_change after insert or update of status on public.offers
 -- Direct (PostgREST) writes run as role 'authenticated'; the definer RPCs run
 -- as the function owner. The guard rejects protected-column changes for
 -- 'authenticated' and lets the privileged path through.
+-- NOTE: deliberately *invoker-rights* (not SECURITY DEFINER) — the mechanism
+-- depends on current_user being the CALLER's role; search_path pinned anyway.
 create or replace function public.guard_protected_columns() returns trigger
-language plpgsql as $$
+language plpgsql set search_path = public as $$
 begin
   if current_user <> 'authenticated' then
     return new;                                       -- privileged path (RPCs, SQL console)
@@ -620,9 +717,15 @@ begin
     if new.is_admin is distinct from old.is_admin then
       raise exception 'forbidden';
     end if;
+    -- a phone may be changed but never removed once set: the contact-reveal
+    -- flow must not surface an empty phone for a verified user
+    if old.phone is not null and new.phone is null then
+      raise exception 'forbidden';
+    end if;
   elsif tg_table_name = 'offers' then
     if new.request_id is distinct from old.request_id
        or new.helper_id is distinct from old.helper_id
+       or new.request_title is distinct from old.request_title
        or new.created_at is distinct from old.created_at then
       raise exception 'forbidden';
     end if;
@@ -637,16 +740,9 @@ begin
        or new.assigned_at is distinct from old.assigned_at
        or new.completed_at is distinct from old.completed_at
        or new.rated_at is distinct from old.rated_at
-       or new.cancelled_at is distinct from old.cancelled_at then
+       or new.cancelled_at is distinct from old.cancelled_at
+       or new.is_paid is distinct from old.is_paid then   -- is_paid: mark_paid RPC only
       raise exception 'forbidden';
-    end if;
-    -- is_paid may only flip false→true, only post-completion, only on paid type
-    if new.is_paid is distinct from old.is_paid then
-      if not (old.is_paid = false and new.is_paid = true
-              and old.status in ('completed','rated')
-              and old.payment_type = 'paid') then
-        raise exception 'forbidden';
-      end if;
     end if;
   end if;
   return new;
@@ -660,6 +756,20 @@ create trigger guard_help_requests before update on public.help_requests
   for each row execute function public.guard_protected_columns();
 create trigger guard_offers before update on public.offers
   for each row execute function public.guard_protected_columns();
+
+-- T4: offer-insert preparation (invoker-rights: the parent request is visible
+-- to the inserter by policy). Normalizes server-controlled fields and takes
+-- the title snapshot /my/offers renders after the parent becomes invisible.
+create or replace function public.prepare_offer_insert() returns trigger
+language plpgsql set search_path = public as $$
+begin
+  new.created_at := now();                       -- never caller-supplied
+  select title into new.request_title
+    from public.help_requests where id = new.request_id;
+  return new;
+end $$;
+create trigger on_offer_insert before insert on public.offers
+  for each row execute function public.prepare_offer_insert();
 ```
 
 ---
@@ -668,12 +778,12 @@ create trigger guard_offers before update on public.offers
 
 | Entity | Create | Read | Update | Delete |
 |---|---|---|---|---|
-| Profile (public+private) | Signup trigger | Public row: anyone signed-in; private row: owner | Owner (name, phone, location); flags via `review_application` only | Cascade with account |
+| Profile (public+private) | Signup trigger | Public row: anyone signed-in; private row: owner | Owner (name, phone, location); flags via `review_application` / `revoke_verification` only | Cascade with account |
 | Verification application | Applicant (INSERT policy) | Applicant + admins | Decision via `review_application` RPC only | Never (audit trail) |
-| Help request | `create_request_with_photos` RPC | Feed rule / owner / selected helper / admin | Owner content-edit (open/has_offers); transitions via RPCs; `is_paid` via guarded owner update | Never — `cancelled` is a state; rows keep offer/rating history |
+| Help request | `create_request_with_photos` RPC | Feed rule / owner / selected helper / admin | Owner content-edit (open/has_offers); transitions via RPCs; `is_paid` via `mark_paid` RPC | Never — `cancelled` is a state; rows keep offer/rating history |
 | Request photo | Same RPC (≥1, ≤5) | Mirrors parent request | Never (immutable set) | Cascade with request |
 | Offer | Helper (INSERT policy) | Offer owner + request owner | Owner edit/withdraw while active; `selected`/`closed` via RPCs | Never — withdrawn is a state |
-| Rating | `submit_rating` RPC | Any signed-in user | Never | Never |
+| Rating | `submit_rating` RPC | Parties + admins on the base table; everyone else via the `helper_ratings` view (no rater linkage) | Never | Never |
 
 "Never" cells are decisions, not omissions: audit trails and referential history
 outweigh hard deletes everywhere in this domain (account deletion cascades are
@@ -705,14 +815,34 @@ type ActionResult<T = void> =
 | `invalid_state` | State machine forbids the transition | "הפעולה אינה זמינה במצב הנוכחי" |
 | `offer_not_active` | Assign raced a withdrawal | "ההצעה כבר אינה זמינה — רעננו את העמוד" |
 | `photos_required` / `too_many_photos` | Photo count out of 1–5 | "יש לצרף 1–5 תמונות" |
+| `photo_not_uploaded` | A photo path has no uploaded object behind it | "העלאת התמונות נכשלה — נסו שוב" |
+| `location_required` | Request published without coordinates | "יש לאשר מיקום לבקשה" |
+| `note_required` | Admin rejected without a reason | "דחייה מחייבת נימוק" |
 | *(RLS denial / no rows)* | Permission denied at policy level | Same generic "אין הרשאה" — deliberately indistinguishable from not-found |
 
+**Silent-denial pattern for direct updates:** rows an UPDATE policy's USING
+clause filters out are *silently skipped* — PostgREST reports success with zero
+affected rows, not an error. Every direct-update action (`updateRequest`,
+`updateOffer`, `withdrawOffer`, `updateProfile`) therefore chains `.select()`
+and treats an empty result as a denial, mapped to the same generic message.
+Only WITH CHECK violations, constraint/trigger raises, and RPC raises arrive as
+Postgres errors.
+
 - **Reads:** Server Components use the per-request Supabase client. The three
-  read shapes worth naming: the feed (capped 200, Haversine-sorted in
-  `lib/geo.ts`, paginated in-memory — architecture §8.1), the request detail
-  (request + photos + offers visible to caller + rating + contact RPC when
-  assigned), and helper profile (profile + grouped rating aggregate + rating
-  list).
+  read shapes worth naming: the feed (**`status in ('open','has_offers') and not
+  is_hidden`** — matching `idx_requests_browse`; "open" in prose always means
+  "not yet assigned" — capped 200, Haversine-sorted in `lib/geo.ts`, paginated
+  in-memory — architecture §8.1), the request detail (request + photos + offers
+  visible to caller + rating + contact RPC when assigned), and helper profile
+  (public profile + aggregate and list from the `helper_ratings` view).
+
+- **Image delivery:** both buckets are private, so `<img src>` cannot reference
+  them directly. Server Components create **bulk signed URLs**
+  (`storage.createSignedUrls`, one call per rendered page, 1-hour expiry —
+  matching navigation-time freshness) for request photos and, on the admin
+  queue, for verification documents. Signing runs as the signed-in user, so the
+  same storage policies authorize it; URLs expire instead of living forever in
+  the HTML.
 
 ---
 
@@ -729,13 +859,16 @@ operational):
 | `assigned`: set own completion flag | Owner / selected helper | `confirm_completion` (side from `auth.uid()`) |
 | `assigned → completed` | System (both flags true) | Same RPC, same transaction |
 | `completed → rated` | Owner | `submit_rating` (insert + flip, atomic) |
+| `is_paid` marker | Owner | `mark_paid` (post-completion, paid type, once) |
 | any pre-completed → `cancelled` | Owner | `cancel_request` (closes live offers) |
 | `is_hidden` flip | Admin | `set_request_hidden` |
 | Verification decide / revoke | Admin | `review_application` / `revoke_verification` |
 
-Distance: `lib/geo.ts` implements Haversine (`~15` lines, pure, unit-tested);
-requests without coordinates sort last with a "מיקום לא צוין" chip. The
-requester's own location comes from their `profiles_private` row (own-row read).
+Distance: `lib/geo.ts` implements Haversine (`~15` lines, pure, unit-tested).
+Every request carries coordinates (NOT NULL — §1.2); the *viewer* may lack a
+location, in which case the feed renders newest-first without distances (spec
+C4 fallback). The viewer's own location comes from their `profiles_private` row
+(own-row read).
 
 ---
 
@@ -793,9 +926,9 @@ action for authority), mirrored by DB constraints (§1.2) as the last line:
 |---|---|
 | `signUpSchema` | email format; password ≥ 8 chars |
 | `profileSchema` | display_name 1–40; phone `^0\d{8,9}$` (optional until verification); lat/lng ranges, both-or-neither |
-| `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; phone required here (`^0\d{8,9}$`); doc_path optional |
-| `professionalApplicationSchema` | doc_path required (the certificate is the point) |
-| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; payment_type + amount coupling (paid ⇒ 0 < amount ≤ 99999.99, volunteer ⇒ none); photo paths 1–5 |
+| `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; phone required here (`^0\d{8,9}$` — mirrored by the `identity_requires_phone` CHECK); doc_path optional |
+| `professionalApplicationSchema` | doc_path required (mirrored by the `professional_requires_doc` CHECK) |
+| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; payment_type + amount coupling (paid ⇒ 0 < amount ≤ 99999.99 — mirrored in `amount_matches_type`, volunteer ⇒ none); lat/lng required (NOT NULL columns); photo paths 1–5 |
 | `offerSchema` | message 5–1000; proposed_terms ≤ 300 (paid requests) |
 | `ratingSchema` | stars int 1–5; note ≤ 500 |
 | `reviewSchema` (admin) | note required on rejection, ≤ 500 |
@@ -856,14 +989,17 @@ app/
     login/page.tsx  signup/page.tsx  emergency/page.tsx  page.tsx
   (app)/
     layout.tsx                      # session read, nav, onboarding redirect
+    error.tsx  not-found.tsx        # route-group boundaries (§10)
     requests/page.tsx               # feed
+    requests/loading.tsx            # skeletons (§11)
     requests/new/page.tsx
     requests/[id]/page.tsx
+    requests/[id]/loading.tsx
     my/requests/page.tsx  my/offers/page.tsx
     helpers/[id]/page.tsx
     profile/page.tsx
     verification/page.tsx
-  admin/page.tsx
+  admin/page.tsx  admin/error.tsx
   layout.tsx                        # <html dir="rtl" lang="he"> only
 actions/
   auth.ts  profile.ts  verification.ts  requests.ts  offers.ts  ratings.ts  admin.ts
@@ -877,9 +1013,20 @@ supabase/
     0001_enums.sql  0002_tables.sql  0003_indexes.sql
     0004_functions.sql  0005_triggers.sql  0006_policies.sql
     0007_storage.sql
-  seed.sql                          # demo data incl. pre-approved accounts
+scripts/
+  seed.ts                           # demo data — see below
 middleware.ts                       # session refresh; matcher excludes /emergency
 ```
+
+**Seeding (demo/dev data):** auth users cannot be reliably created by plain SQL
+(the `auth` schema is GoTrue-owned and its internals are unversioned), so
+`scripts/seed.ts` uses the **service-role admin API locally only** — exactly the
+"local tooling for migrations/seeding" carve-out of architecture §9 — to create
+users, then inserts domain rows. The demo dataset the presentation needs:
+1 admin, 4 identity-verified users (1 with the professional badge),
+1 unverified user (to demo the gate), requests in **every** lifecycle state
+(open, has_offers, assigned, completed, rated, cancelled, plus one hidden),
+offers in every status, and a few ratings so averages render.
 
 ---
 
