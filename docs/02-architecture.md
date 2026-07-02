@@ -77,7 +77,7 @@ state libraries, realtime subscriptions, background jobs, and any third-party AP
 | **Supabase** | Mandated. Postgres RLS is the mechanism that makes "the database is the authority" real; Auth and Storage integrate with the same user identity, so one JWT drives DB policies *and* storage policies. |
 | **Vercel** | Mandated. Native Next.js hosting; preview deployments per commit help the incremental-commits workflow. |
 | **`@supabase/ssr`** | The supported way to use Supabase Auth in App Router: cookie-based sessions readable in Server Components, Server Actions, and middleware. Hand-rolling cookie/session handling around `supabase-js` is exactly the kind of security-sensitive code we should not write ourselves. |
-| **Zod** | One schema per form, used twice: client-side for instant feedback, server-side inside the Server Action as the real gate. Single source of truth for input validation (assignment stage 4 requires explicit input validation). |
+| **Zod** | One schema per form, parsed server-side inside the Server Action as the authoritative gate; client-side, native HTML constraint-validation attributes (`required`, `minLength`, `min`/`max`, `type`) mirror the same rules for instant feedback without shipping a validation runtime to the browser. Single source of truth for input validation (assignment stage 4). |
 | **Tailwind CSS** | Utility CSS with **logical properties** (`ms-*`/`me-*`, `text-start`) makes RTL correct by construction instead of by `direction`-specific overrides. No component library — the UI is small enough to own, and it avoids fighting a library's LTR assumptions. |
 | **React `useActionState` + plain forms** | Form state and server errors without a form library; the forms here are small (≤ ~8 fields). react-hook-form would be justified only with heavy dynamic forms. |
 
@@ -340,8 +340,9 @@ literal non-matching URL.)
 | Action | Validates | DB effect |
 |---|---|---|
 | `signUp`, `signIn`, `signOut` | credentials schema | Supabase Auth; profile rows via trigger |
-| `updateProfile` | name/phone/location schema | update own `profiles` + `profiles_private` rows (RLS: own row only) |
-| `submitIdentityApplication` | application schema | insert `verification_applications` (kind=identity) **+ save phone to own `profiles_private` row** (spec §8.2 — the contact-reveal RPC depends on it) |
+| `updateProfile` | name/phone schema | update own `profiles` + `profiles_private` rows (RLS: own row only) |
+| `updateLocation` | lat/lng schema | update own `profiles_private` coordinates (called by the geolocation capture component) |
+| `submitIdentityApplication` | application schema | insert `verification_applications` (kind=identity, incl. the phone); on approval `review_application` copies the **reviewed** phone to `profiles_private` (spec §8.2 — the contact-reveal RPC depends on it) |
 | `submitProfessionalApplication` | application schema | insert `verification_applications` (kind=professional; INSERT policy requires approved identity) |
 | `createRequest` | request schema (≥1 photo path) | **RPC `create_request_with_photos`** |
 | `updateRequest` | request schema | update own request — content columns only (RLS: owner + status ∈ {open, has_offers}; system columns trigger-guarded) |
@@ -489,9 +490,10 @@ grants an attacker nothing beyond what any signed-up user already has.
   one-time geolocation capture. Everything else is fetched fresh by Server
   Components and revalidated after mutations — no client cache to invalidate, no
   global store.
-- **Validation:** one zod schema per form in `lib/validation/`, imported by both
-  the client component (instant feedback) and the Server Action (authoritative
-  parse). DB constraints back the same rules at the last line of defense.
+- **Validation:** one zod schema per form in `lib/validation/`, parsed
+  authoritatively in the Server Action; client components mirror the same rules
+  with native HTML constraint-validation attributes. DB constraints back the
+  same rules at the last line of defense.
 - **Error handling:**
   - Server Actions return a typed `{ ok, fieldErrors?, formError? }` result;
     forms render Hebrew messages next to fields.
@@ -513,8 +515,9 @@ grants an attacker nothing beyond what any signed-up user already has.
 ```
 app/
   (public)/            # login, signup, emergency, landing — layout reads no cookies
-  (app)/               # signed-in shell: requests, my/*, profile, helpers, verification
-  admin/               # admin dashboard (also RLS-guarded)
+  (app)/               # signed-in shell: requests, my/*, profile, helpers,
+                       # verification, admin — admin shares the shell's nav and
+                       # error boundary; RLS + an in-page is_admin gate protect it
   layout.tsx           # html dir="rtl" lang="he" only — nav lives in (app) layout
                        # note: no auth/callback route — password auth with email
                        # confirmation off needs none; it appears with that roadmap item

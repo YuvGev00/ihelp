@@ -18,8 +18,8 @@ function PaymentFields({
   const [paymentType, setPaymentType] = useState<"paid" | "volunteer">(defaultType);
   return (
     <>
-      <div>
-        <span className="field-label">{S.requests.paymentType}</span>
+      <fieldset>
+        <legend className="field-label">{S.requests.paymentType}</legend>
         <div className="flex gap-4">
           {(["volunteer", "paid"] as const).map((t) => (
             <label key={t} className="flex items-center gap-1.5 text-sm">
@@ -34,7 +34,7 @@ function PaymentFields({
             </label>
           ))}
         </div>
-      </div>
+      </fieldset>
       {paymentType === "paid" && (
         <div>
           <label htmlFor="amount" className="field-label">

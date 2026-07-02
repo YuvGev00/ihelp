@@ -13,8 +13,18 @@ export const requestSchema = z
     category: z.enum(CATEGORY_KEYS, { message: "יש לבחור קטגוריה" }),
     paymentType: z.enum(["paid", "volunteer"]),
     amount: z.coerce.number().positive("סכום חיובי").max(99999.99, "עד 99,999.99 ₪").optional(),
-    lat: z.coerce.number().min(-90).max(90),
-    lng: z.coerce.number().min(-180).max(180),
+    // string-first: z.coerce.number() turns null/"" into 0 ("Null Island");
+    // an absent hidden input must FAIL, not become coordinates (0,0)
+    lat: z
+      .string({ message: "יש לאשר מיקום לבקשה" })
+      .min(1, "יש לאשר מיקום לבקשה")
+      .transform(Number)
+      .pipe(z.number().min(-90).max(90)),
+    lng: z
+      .string({ message: "יש לאשר מיקום לבקשה" })
+      .min(1, "יש לאשר מיקום לבקשה")
+      .transform(Number)
+      .pipe(z.number().min(-180).max(180)),
     photoPaths: z.array(z.string().min(1)).min(1, "יש לצרף לפחות תמונה אחת").max(5, "עד 5 תמונות"),
   })
   .refine((v) => (v.paymentType === "paid") === (v.amount !== undefined), {

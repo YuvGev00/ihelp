@@ -17,7 +17,8 @@ export async function submitIdentityApplication(
     fullName: formData.get("fullName"),
     selfDescription: formData.get("selfDescription"),
     phone: formData.get("phone"),
-    docPath: formData.get("docPath"),
+    // the ID photo is optional: no upload means no hidden input → null
+    docPath: formData.get("docPath") ?? "",
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -50,7 +51,7 @@ export async function submitProfessionalApplication(
   const parsed = professionalApplicationSchema.safeParse({
     fullName: formData.get("fullName"),
     selfDescription: formData.get("selfDescription"),
-    docPath: formData.get("docPath"),
+    docPath: formData.get("docPath") ?? "",
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 

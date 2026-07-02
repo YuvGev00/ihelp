@@ -919,8 +919,9 @@ truth — at MVP latency this is simpler and always consistent).
 
 ## 9. Input Validation
 
-One zod schema per form in `lib/validation/`, parsed **twice** (client for UX,
-action for authority), mirrored by DB constraints (§1.2) as the last line:
+One zod schema per form in `lib/validation/`, parsed authoritatively in the
+Server Action; client-side, native HTML constraint-validation attributes mirror
+the same bounds for instant feedback. DB constraints (§1.2) are the last line:
 
 | Schema | Rules (mirror of DB constraints) |
 |---|---|
@@ -997,9 +998,11 @@ app/
     requests/[id]/loading.tsx
     my/requests/page.tsx  my/offers/page.tsx
     helpers/[id]/page.tsx
-    profile/page.tsx
     verification/page.tsx
-  admin/page.tsx  admin/error.tsx
+    admin/page.tsx                  # inside the shell: shares nav/session/error
+                                    # boundary; RLS + in-page is_admin gate 404s
+                                    # non-admins
+  (app)/profile/page.tsx            # onboarding target — outside (onboarded)
   layout.tsx                        # <html dir="rtl" lang="he"> only
 actions/
   auth.ts  profile.ts  verification.ts  requests.ts  offers.ts  ratings.ts  admin.ts

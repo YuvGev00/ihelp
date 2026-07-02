@@ -54,10 +54,14 @@ export function AuthForm({
             name="password"
             type="password"
             required
+            minLength={isSignUp ? 8 : 1}
             dir="ltr"
             className="field-input"
             autoComplete={isSignUp ? "new-password" : "current-password"}
           />
+          {isSignUp && (
+            <p className="mt-1 text-xs text-stone-500">{S.auth.passwordHint}</p>
+          )}
           {state && !state.ok && state.fieldErrors?.password && (
             <p className="field-error">{state.fieldErrors.password}</p>
           )}

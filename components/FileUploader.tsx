@@ -27,6 +27,13 @@ export function FileUploader({
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
+  const inputId = `file-${name}`;
+
+  // Removal drops the path from the form; the orphaned storage object is an
+  // accepted, bounded cost (design 03 §10) — better than retyping the form.
+  function removePath(path: string) {
+    setPaths((prev) => prev.filter((p) => p !== path));
+  }
 
   async function onChange(e: React.ChangeEvent<HTMLInputElement>) {
     const files = Array.from(e.target.files ?? []);
@@ -81,9 +88,12 @@ export function FileUploader({
 
   return (
     <div>
-      <span className="field-label">{label}</span>
+      <label htmlFor={inputId} className="field-label">
+        {label}
+      </label>
       {hint && <p className="mb-2 text-xs text-stone-500">{hint}</p>}
       <input
+        id={inputId}
         ref={inputRef}
         type="file"
         accept={PHOTO_MIME_TYPES.join(",")}
@@ -95,9 +105,24 @@ export function FileUploader({
       {busy && <p className="mt-1 text-sm text-stone-500">מעלה…</p>}
       {error && <p className="field-error">{error}</p>}
       {paths.length > 0 && (
-        <p className="mt-1 text-sm text-emerald-700">
-          הועלו {paths.length} {paths.length === 1 ? "קובץ" : "קבצים"} ✓
-        </p>
+        <ul className="mt-2 flex flex-wrap gap-1.5">
+          {paths.map((p, i) => (
+            <li
+              key={p}
+              className="chip gap-1.5 bg-emerald-50 text-emerald-800"
+            >
+              קובץ {i + 1} ✓
+              <button
+                type="button"
+                onClick={() => removePath(p)}
+                aria-label={`הסרת קובץ ${i + 1}`}
+                className="font-bold text-red-600 hover:text-red-800"
+              >
+                ×
+              </button>
+            </li>
+          ))}
+        </ul>
       )}
       {paths.map((p) => (
         <input key={p} type="hidden" name={name} value={p} />

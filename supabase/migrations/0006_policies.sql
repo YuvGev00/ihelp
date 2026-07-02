@@ -111,4 +111,7 @@ create policy ratings_select on public.ratings
 create view public.helper_ratings
   with (security_invoker = false) as
   select helper_id, stars, note, created_at from public.ratings;
+-- Supabase's default privileges auto-grant on new objects; an owner-rights
+-- view bypasses RLS, so anon access must be revoked explicitly.
+revoke all on public.helper_ratings from anon, public;
 grant select on public.helper_ratings to authenticated;

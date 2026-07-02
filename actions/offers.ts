@@ -13,7 +13,8 @@ export async function createOffer(
 ): Promise<ActionResult> {
   const parsed = offerSchema.safeParse({
     message: formData.get("message"),
-    proposedTerms: formData.get("proposedTerms"),
+    // absent on volunteer requests (input not rendered): null would fail zod
+    proposedTerms: formData.get("proposedTerms") ?? "",
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -47,7 +48,7 @@ export async function updateOffer(
 ): Promise<ActionResult> {
   const parsed = offerSchema.safeParse({
     message: formData.get("message"),
-    proposedTerms: formData.get("proposedTerms"),
+    proposedTerms: formData.get("proposedTerms") ?? "",
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 

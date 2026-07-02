@@ -113,3 +113,13 @@ begin
 end $$;
 create trigger on_offer_insert before insert on public.offers
   for each row execute function public.prepare_offer_insert();
+
+-- Trigger functions are invoked by triggers only — nobody calls them via the
+-- API. The 0004 blanket revoke ran before these existed (and Postgres grants
+-- EXECUTE to PUBLIC on new functions by default), so revoke explicitly.
+revoke execute on function
+  public.handle_new_user(),
+  public.sync_request_offer_status(),
+  public.guard_protected_columns(),
+  public.prepare_offer_insert()
+from public, anon, authenticated;

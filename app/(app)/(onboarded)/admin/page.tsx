@@ -42,6 +42,31 @@ export default async function AdminPage() {
         .order("display_name"),
     ]);
 
+  // Full application history per queued applicant (spec §4.1: resubmitting the
+  // same content must not get a fresh roll of the dice).
+  const queueUserIds = [...new Set((queue ?? []).map((a) => a.user_id))];
+  const { data: history } = queueUserIds.length
+    ? await supabase
+        .from("verification_applications")
+        .select("user_id, kind, status, admin_note, decided_at")
+        .in("user_id", queueUserIds)
+        .neq("status", "pending")
+        .order("decided_at", { ascending: false })
+    : { data: [] };
+  type HistoryRow = {
+    user_id: string;
+    kind: string;
+    status: string;
+    admin_note: string | null;
+    decided_at: string | null;
+  };
+  const historyByUser = new Map<string, HistoryRow[]>();
+  for (const h of (history ?? []) as HistoryRow[]) {
+    const list = historyByUser.get(h.user_id) ?? [];
+    list.push(h);
+    historyByUser.set(h.user_id, list);
+  }
+
   // Bulk signed URLs for verification documents (private bucket; 1h expiry).
   const docPaths = (queue ?? []).map((a) => a.doc_path).filter(Boolean) as string[];
   const signed = docPaths.length
@@ -95,6 +120,20 @@ export default async function AdminPage() {
                   >
                     {S.admin.viewDoc}
                   </a>
+                )}
+                {(historyByUser.get(app.user_id) ?? []).length > 0 && (
+                  <div className="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
+                    <p className="font-semibold">{S.admin.historyTitle}</p>
+                    <ul className="mt-1 space-y-0.5">
+                      {historyByUser.get(app.user_id)!.map((h, i) => (
+                        <li key={i}>
+                          {S.admin.kind[h.kind]} — {S.admin.statusLabel[h.status]}
+                          {h.admin_note ? `: ${h.admin_note}` : ""}
+                          {h.decided_at ? ` (${formatDate(h.decided_at)})` : ""}
+                        </li>
+                      ))}
+                    </ul>
+                  </div>
                 )}
                 <ReviewForm applicationId={app.id} />
               </li>

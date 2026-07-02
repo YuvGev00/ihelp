@@ -53,6 +53,9 @@ export function OfferForm({
             defaultValue={existing?.proposedTerms ?? ""}
             className="field-input"
           />
+          {state && !state.ok && state.fieldErrors?.proposedTerms && (
+            <p className="field-error">{state.fieldErrors.proposedTerms}</p>
+          )}
         </div>
       )}
       {state && !state.ok && state.formError && (

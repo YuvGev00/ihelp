@@ -98,7 +98,13 @@ export default async function RequestDetailPage({
     ratingAgg.set(r.helper_id, agg);
   }
 
-  const myOffer = (offers ?? []).find((o) => o.helper_id === user.id) ?? null;
+  // Prefer the ACTIVE offer (withdraw-then-reoffer leaves older rows behind);
+  // fall back to the newest one so the status footer reflects reality.
+  const myOffers = (offers ?? []).filter((o) => o.helper_id === user.id);
+  const myOffer =
+    myOffers.find((o) => o.status === "active") ??
+    myOffers[myOffers.length - 1] ??
+    null;
   const selectedOffer =
     (offers ?? []).find((o) => o.id === request.assigned_offer_id) ?? null;
   const isSelectedHelper = selectedOffer?.helper_id === user.id;
@@ -197,15 +203,27 @@ export default async function RequestDetailPage({
       {isParty && request.status === "assigned" && (
         <section className="card space-y-2">
           <h2 className="font-semibold">{S.lifecycle.confirmCompletion}</h2>
-          <p className="text-sm text-stone-600">
-            {isOwner
+          {(() => {
+            const mine = isOwner
               ? request.completed_by_requester
-                ? `${S.lifecycle.youConfirmed} — ${S.lifecycle.waitingOther}`
-                : null
-              : request.completed_by_helper
-                ? `${S.lifecycle.youConfirmed} — ${S.lifecycle.waitingOther}`
-                : null}
-          </p>
+              : request.completed_by_helper;
+            const theirs = isOwner
+              ? request.completed_by_helper
+              : request.completed_by_requester;
+            if (mine)
+              return (
+                <p className="text-sm text-stone-600">
+                  {S.lifecycle.youConfirmed} — {S.lifecycle.waitingOther}
+                </p>
+              );
+            if (theirs)
+              return (
+                <p className="text-sm font-medium text-emerald-700">
+                  {S.lifecycle.otherConfirmed}
+                </p>
+              );
+            return null;
+          })()}
           {((isOwner && !request.completed_by_requester) ||
             (isSelectedHelper && !request.completed_by_helper)) && (
             <ConfirmCompletionButton requestId={id} />
@@ -239,7 +257,14 @@ export default async function RequestDetailPage({
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">{S.offers.sectionTitle}</h2>
           {!offers?.length ? (
-            <EmptyState message={S.offers.noOffersYet} />
+            <EmptyState
+              message={
+                ["open", "has_offers"].includes(request.status) &&
+                !request.is_hidden
+                  ? S.offers.noOffersYet
+                  : S.offers.noOffersFinal
+              }
+            />
           ) : (
             <ul className="space-y-3">
               {offers.map((o) => {

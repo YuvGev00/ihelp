@@ -44,5 +44,13 @@ export async function updateSession(request: NextRequest) {
     return NextResponse.redirect(url);
   }
 
+  // Signed-in users skip the marketing pages (arch §6) — the redirect lives
+  // here so the landing page itself can stay static and cookie-free.
+  if (user && ["/", "/login", "/signup"].includes(request.nextUrl.pathname)) {
+    const url = request.nextUrl.clone();
+    url.pathname = "/requests";
+    return NextResponse.redirect(url);
+  }
+
   return supabaseResponse;
 }

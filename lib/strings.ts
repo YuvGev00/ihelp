@@ -29,6 +29,8 @@ export const S = {
     haveAccount: "כבר יש לך חשבון?",
     noAccount: "אין לך חשבון עדיין?",
     badCredentials: "אימייל או סיסמה שגויים",
+    emailTaken: "כבר קיים חשבון עם האימייל הזה — נסו להתחבר",
+    passwordHint: "לפחות 8 תווים",
   },
 
   profile: {
@@ -112,6 +114,7 @@ export const S = {
     sectionTitle: "הצעות",
     myOffersTitle: "ההצעות שלי",
     noOffersYet: "עוד אין הצעות — עוזרים באזור יראו את הבקשה בקרוב",
+    noOffersFinal: "לא התקבלו הצעות",
     noMyOffers: "עוד לא הצעת עזרה",
     offerHelp: "הצעת עזרה",
     message: "איך אעזור",
@@ -138,6 +141,7 @@ export const S = {
     confirmCompletion: "אישור שהעזרה הושלמה",
     waitingOther: "ממתין לאישור הצד השני",
     youConfirmed: "אישרת ✓",
+    otherConfirmed: "הצד השני אישר — נשאר רק האישור שלך",
     completedBoth: "העזרה הושלמה — שני הצדדים אישרו",
     markPaid: "סימון כשולם",
     markedPaid: "שולם ✓",
@@ -165,6 +169,12 @@ export const S = {
     approve: "אישור",
     reject: "דחייה",
     noteLabel: "נימוק (חובה בדחייה)",
+    historyTitle: "היסטוריית בקשות קודמות",
+    statusLabel: {
+      approved: "אושרה",
+      rejected: "נדחתה",
+      revoked: "בוטלה",
+    } as Record<string, string>,
     moderationTitle: "בקשות עזרה — פיקוח",
     hide: "הסתרה",
     unhide: "ביטול הסתרה",
@@ -183,7 +193,8 @@ export const S = {
       { name: "מד\"א — מגן דוד אדום", phone: "101" },
       { name: "כיבוי והצלה", phone: "102" },
       { name: "ער\"ן — עזרה ראשונה נפשית", phone: "1201" },
-      { name: "קו סיוע לנפגעות ולנפגעי תקיפה מינית", phone: "1203" },
+      { name: "קו סיוע לנפגעות תקיפה מינית (נשים)", phone: "1202" },
+      { name: "קו סיוע לנפגעי תקיפה מינית (גברים)", phone: "1203" },
     ],
   },
 

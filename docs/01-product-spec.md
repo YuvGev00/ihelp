@@ -561,7 +561,8 @@ emergency numbers as plain telephone links that open the device's dialer:
 | Magen David Adom — medical (מד״א) | 101 |
 | Fire & Rescue (כיבוי והצלה) | 102 |
 | ERAN — emotional first aid (ער״ן) | 1201 |
-| Sexual assault crisis hotline (קו סיוע לנפגעי תקיפה מינית) | 1203 |
+| Sexual assault crisis hotline — women (קו סיוע לנפגעות תקיפה מינית) | 1202 |
+| Sexual assault crisis hotline — men (קו סיוע לנפגעי תקיפה מינית) | 1203 |
 
 **Hard constraints — the page is information only:**
 

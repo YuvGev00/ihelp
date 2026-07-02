@@ -30,7 +30,27 @@ const db = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-const PASSWORD = "ihelp-demo-1234";
+// Never hardcode credentials in the repo: provide SEED_PASSWORD, or a random
+// one is generated and printed exactly once at the end of the run.
+const PASSWORD =
+  process.env.SEED_PASSWORD ??
+  `demo-${Math.random().toString(36).slice(2, 10)}`;
+
+/** Throws on supabase-js soft errors ({ error } results do not throw). */
+function must<T extends { error: { message: string } | null }>(
+  result: T,
+  what: string
+): T {
+  if (result.error) throw new Error(`${what}: ${result.error.message}`);
+  return result;
+}
+
+// 1x1 PNG placeholder — uploaded per request so the demo respects the
+// ">=1 photo per request" invariant and feed cards render thumbnails.
+const PLACEHOLDER_PNG = Buffer.from(
+  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
+  "base64"
+);
 
 const USERS = [
   { key: "admin", email: "admin@ihelp.demo", name: "מנהל המערכת", phone: "0500000001", admin: true, verified: true },
@@ -88,46 +108,83 @@ async function main() {
 
   // 3. Approved identity applications (audit trail behind the flags)
   for (const u of USERS.filter((u) => u.verified)) {
+    must(
+      await db.from("verification_applications").insert({
+        user_id: ids[u.key],
+        kind: "identity",
+        status: "approved",
+        full_name: u.name,
+        self_description: "משתמש/ת דמו",
+        phone: u.phone ?? "0500000000",
+        decided_by: ids.admin,
+        decided_at: new Date().toISOString(),
+      }),
+      `identity application (${u.key})`
+    );
+  }
+  // professional_requires_doc CHECK: the certificate object must exist
+  const certPath = `${ids.yossi}/seed-certificate.png`;
+  must(
+    await db.storage
+      .from("verification-docs")
+      .upload(certPath, PLACEHOLDER_PNG, {
+        contentType: "image/png",
+        upsert: true,
+      }),
+    "certificate upload"
+  );
+  must(
     await db.from("verification_applications").insert({
-      user_id: ids[u.key],
-      kind: "identity",
+      user_id: ids.yossi,
+      kind: "professional",
       status: "approved",
-      full_name: u.name,
-      self_description: "משתמש/ת דמו",
-      phone: u.phone ?? "0500000000",
+      full_name: "יוסי כהן",
+      self_description: "חשמלאי מוסמך, 12 שנות ניסיון",
+      doc_path: certPath,
       decided_by: ids.admin,
       decided_at: new Date().toISOString(),
-    });
-  }
-  await db.from("verification_applications").insert({
-    user_id: ids.yossi,
-    kind: "professional",
-    status: "approved",
-    full_name: "יוסי כהן",
-    self_description: "חשמלאי מוסמך, 12 שנות ניסיון",
-    decided_by: ids.admin,
-    decided_at: new Date().toISOString(),
-  });
+    }),
+    "professional application"
+  );
   // one pending identity application for the admin queue demo
-  await db.from("verification_applications").insert({
-    user_id: ids.noa,
-    kind: "identity",
-    status: "pending",
-    full_name: "נועה פרידמן",
-    self_description: "שמחה לעזור לשכנים באזור",
-    phone: "0500000006",
-  });
+  must(
+    await db.from("verification_applications").insert({
+      user_id: ids.noa,
+      kind: "identity",
+      status: "pending",
+      full_name: "נועה פרידמן",
+      self_description: "שמחה לעזור לשכנים באזור",
+      phone: "0500000006",
+    }),
+    "pending application"
+  );
 
   // 4. Requests across the lifecycle. Seed inserts set states directly
-  // (service role passes the column guard); photos are omitted — the RPC path
-  // that enforces them is for real users, and seeded cards render without.
-  const req = async (fields: Record<string, unknown>) => {
+  // (service role passes the column guard). Every request gets a placeholder
+  // photo — the demo must respect the ">=1 photo" invariant the RPC enforces
+  // for real users.
+  let photoSeq = 0;
+  const req = async (fields: Record<string, unknown> & { requester_id: string }) => {
     const { data, error } = await db
       .from("help_requests")
       .insert({ lat: GEO.lat, lng: GEO.lng, ...fields })
       .select("id")
       .single();
     if (error) throw error;
+    const path = `${fields.requester_id}/seed-photo-${photoSeq++}.png`;
+    must(
+      await db.storage.from("request-photos").upload(path, PLACEHOLDER_PNG, {
+        contentType: "image/png",
+        upsert: true,
+      }),
+      `photo upload (${path})`
+    );
+    must(
+      await db
+        .from("request_photos")
+        .insert({ request_id: data.id, storage_path: path, position: 0 }),
+      `photo row (${path})`
+    );
     return data.id as string;
   };
 
@@ -279,13 +336,53 @@ async function main() {
     rated_at: new Date().toISOString(),
     is_paid: true,
   }).eq("id", ratedReq);
-  await db.from("ratings").insert({
-    request_id: ratedReq,
-    helper_id: ids.yossi,
-    rater_id: ids.rina,
-    stars: 5,
-    note: "מקצועי, מהיר ואדיב. מומלץ בחום!",
+  must(
+    await db.from("ratings").insert({
+      request_id: ratedReq,
+      helper_id: ids.yossi,
+      rater_id: ids.rina,
+      stars: 5,
+      note: "מקצועי, מהיר ואדיב. מומלץ בחום!",
+    }),
+    "rating 1"
+  );
+
+  // A second rated job so helper averages are non-trivial (yossi: 5 + 4).
+  const ratedReq2 = await req({
+    requester_id: ids.dana,
+    title: "החלפת שקע שרוף",
+    description: "שקע במטבח הפסיק לעבוד ומריח שרוף — צריך החלפה.",
+    category: "electricity",
+    payment_type: "paid",
+    amount: 150,
   });
+  const selRated2 = await offer({
+    request_id: ratedReq2,
+    helper_id: ids.yossi,
+    message: "מגיע עם שקע חדש, עבודה של חצי שעה.",
+    proposed_terms: "₪150",
+  });
+  await db.from("offers").update({ status: "selected" }).eq("id", selRated2);
+  await db.from("help_requests").update({
+    status: "rated",
+    assigned_offer_id: selRated2,
+    assigned_at: new Date().toISOString(),
+    completed_by_requester: true,
+    completed_by_helper: true,
+    completed_at: new Date().toISOString(),
+    rated_at: new Date().toISOString(),
+    is_paid: true,
+  }).eq("id", ratedReq2);
+  must(
+    await db.from("ratings").insert({
+      request_id: ratedReq2,
+      helper_id: ids.yossi,
+      rater_id: ids.dana,
+      stars: 4,
+      note: "עבודה טובה, איחר קצת.",
+    }),
+    "rating 2"
+  );
 
   console.log("seeded. demo password for all users:", PASSWORD);
   console.log("open request:", openReq);

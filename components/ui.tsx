@@ -89,12 +89,13 @@ export function EmptyState({ message }: { message: string }) {
   );
 }
 
-/** he-IL relative-ish date. */
+/** he-IL date — pinned to Israel time; the server (Vercel) runs in UTC. */
 export function formatDate(iso: string): string {
   return new Date(iso).toLocaleDateString("he-IL", {
     day: "numeric",
     month: "short",
     hour: "2-digit",
     minute: "2-digit",
+    timeZone: "Asia/Jerusalem",
   });
 }

@@ -33,6 +33,9 @@ export function mapDbError(error: { message?: string } | null): string {
   ) {
     return DENIED_ERROR;
   }
+  // Unrecognized = infrastructure-class failure: keep a server-side trace
+  // (Vercel logs) while the user sees the generic message (design 03 §10).
+  console.error("[db]", error.message);
   return GENERIC_ERROR;
 }
 

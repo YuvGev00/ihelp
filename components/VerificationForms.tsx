@@ -64,6 +64,9 @@ export function IdentityApplicationForm() {
         name="docPath"
         label={S.verification.idPhoto}
       />
+      {state && !state.ok && state.fieldErrors?.docPath && (
+        <p className="field-error">{state.fieldErrors.docPath}</p>
+      )}
 
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>

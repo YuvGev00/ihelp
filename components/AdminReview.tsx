@@ -1,6 +1,6 @@
 "use client";
 
-import { useActionState, useTransition, useState } from "react";
+import { useActionState, useTransition } from "react";
 import {
   reviewApplication,
   setRequestHidden,
@@ -10,15 +10,26 @@ import { S } from "@/lib/strings";
 
 export function ReviewForm({ applicationId }: { applicationId: string }) {
   const [state, formAction, pending] = useActionState(reviewApplication, null);
-  const [decision, setDecision] = useState<"true" | "false">("true");
+  const noteId = `note-${applicationId}`;
 
   return (
     <form action={formAction} className="mt-3 space-y-2 border-t border-stone-100 pt-3">
       <input type="hidden" name="applicationId" value={applicationId} />
-      <input type="hidden" name="approve" value={decision} />
       <div>
-        <label className="field-label">{S.admin.noteLabel}</label>
-        <input name="note" className="field-input" maxLength={500} />
+        <label htmlFor={noteId} className="field-label">
+          {S.admin.noteLabel}
+        </label>
+        <input
+          id={noteId}
+          name="note"
+          className="field-input"
+          maxLength={500}
+          // implicit submission (Enter) would click the first submit button —
+          // an accidental Approve. Deciding requires an explicit click.
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.preventDefault();
+          }}
+        />
         {state && !state.ok && state.fieldErrors?.note && (
           <p className="field-error">{state.fieldErrors.note}</p>
         )}
@@ -26,19 +37,24 @@ export function ReviewForm({ applicationId }: { applicationId: string }) {
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}
+      {/* The decision rides on the submitter's own name/value (React 19 puts
+          it in the action's FormData). A hidden-input-plus-onClick pattern
+          would let Enter-in-the-note-field approve by implicit submission. */}
       <div className="flex gap-2">
         <button
           type="submit"
+          name="approve"
+          value="true"
           disabled={pending}
-          onClick={() => setDecision("true")}
           className="btn-primary"
         >
           {S.admin.approve}
         </button>
         <button
           type="submit"
+          name="approve"
+          value="false"
           disabled={pending}
-          onClick={() => setDecision("false")}
           className="btn-danger"
         >
           {S.admin.reject}
