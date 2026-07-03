@@ -38,7 +38,6 @@ test("core marketplace loop through the UI", async ({ browser }) => {
     .fill("בדיקת קצה-לקצה: תיאור ארוך מספיק כדי לעבור ולידציה.");
   await requester.getByLabel("קטגוריה").selectOption("tech_help");
   await requester.getByRole("radio", { name: "בתשלום" }).check();
-  await requester.getByLabel("סכום מוצע (₪)").fill("120");
   await requester
     .locator('input[type="file"]')
     .setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
@@ -57,7 +56,7 @@ test("core marketplace loop through the UI", async ({ browser }) => {
 
   await helper.goto(requestUrl);
   await helper.getByLabel("איך אעזור").fill("מתקין מערכות שנים — אשמח לעזור.");
-  await helper.getByLabel("התנאים שלי (למשל מחיר)").fill("₪120 כולל הגעה");
+  await helper.getByLabel("המחיר שלי (₪)").fill("120");
   await helper.getByRole("button", { name: "שליחת הצעה" }).click();
   await expect(helper.getByText("ההצעה שלך")).toBeVisible();
 
@@ -68,8 +67,11 @@ test("core marketplace loop through the UI", async ({ browser }) => {
   await requester.getByRole("button", { name: "בחירה בהצעה זו" }).click();
   await expect(requester.getByText("שובצה")).toBeVisible();
 
-  // Contact card visible to both parties (phone from the identity application)
+  // Contact card visible to both parties, with the agreed (helper-set) price
+  // (appears twice by design: the offer chip and the agreed-price line)
   await expect(requester.getByText("פרטי קשר לתיאום")).toBeVisible();
+  await expect(requester.getByText("המחיר שסוכם")).toBeVisible();
+  await expect(requester.getByText("₪120").first()).toBeVisible();
   await helper.reload();
   await expect(helper.getByText("פרטי קשר לתיאום")).toBeVisible();
 

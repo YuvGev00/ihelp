@@ -194,7 +194,6 @@ async function main() {
     description: "ארון איקאה שהגיע בקרטונים, צריך שעתיים של עבודה משותפת.",
     category: "repairs",
     payment_type: "paid",
-    amount: 150,
   });
 
   const offersReq = await req({
@@ -203,7 +202,6 @@ async function main() {
     description: "הדוד מפסיק לחמם. דרוש חשמלאי מוסמך לבדיקה.",
     category: "electricity",
     payment_type: "paid",
-    amount: 300,
   });
 
   const assignedReq = await req({
@@ -220,7 +218,6 @@ async function main() {
     description: "להוריד ספה שלוש קומות ולהעמיס על טנדר.",
     category: "moving",
     payment_type: "paid",
-    amount: 120,
   });
 
   const ratedReq = await req({
@@ -229,7 +226,6 @@ async function main() {
     description: "מחשב חדש שצריך להעביר אליו הכל ולהתקין מדפסת.",
     category: "tech_help",
     payment_type: "paid",
-    amount: 100,
   });
 
   await req({
@@ -266,13 +262,13 @@ async function main() {
     request_id: offersReq,
     helper_id: ids.yossi,
     message: "חשמלאי מוסמך, יכול להגיע מחר בבוקר עם ציוד בדיקה.",
-    proposed_terms: "₪280 כולל ביקור",
+    price: 280,
   });
   await offer({
     request_id: offersReq,
     helper_id: ids.amir,
     message: "מתעסק בתיקוני בית, אשמח לנסות לעזור.",
-    proposed_terms: "₪200",
+    price: 200,
   });
   // withdrawn offer example
   const withdrawn = await offer({
@@ -306,7 +302,7 @@ async function main() {
     request_id: completedReq,
     helper_id: ids.yossi,
     message: "יש לי טנדר ורצועות, נסגור את זה בשעה.",
-    proposed_terms: "₪120",
+    price: 120,
   });
   await db.from("offers").update({ status: "selected" }).eq("id", selCompleted);
   await db.from("help_requests").update({
@@ -323,7 +319,7 @@ async function main() {
     request_id: ratedReq,
     helper_id: ids.yossi,
     message: "מתקין מחשבים שנים, כולל אחריות לשבוע :)",
-    proposed_terms: "₪100",
+    price: 100,
   });
   await db.from("offers").update({ status: "selected" }).eq("id", selRated);
   await db.from("help_requests").update({
@@ -354,13 +350,12 @@ async function main() {
     description: "שקע במטבח הפסיק לעבוד ומריח שרוף — צריך החלפה.",
     category: "electricity",
     payment_type: "paid",
-    amount: 150,
   });
   const selRated2 = await offer({
     request_id: ratedReq2,
     helper_id: ids.yossi,
     message: "מגיע עם שקע חדש, עבודה של חצי שעה.",
-    proposed_terms: "₪150",
+    price: 150,
   });
   await db.from("offers").update({ status: "selected" }).eq("id", selRated2);
   await db.from("help_requests").update({

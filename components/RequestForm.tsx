@@ -8,54 +8,31 @@ import { S } from "@/lib/strings";
 
 function PaymentFields({
   defaultType,
-  defaultAmount,
-  fieldErrors,
 }: {
   defaultType: "paid" | "volunteer";
-  defaultAmount?: number | null;
-  fieldErrors?: Record<string, string>;
 }) {
   const [paymentType, setPaymentType] = useState<"paid" | "volunteer">(defaultType);
   return (
-    <>
-      <fieldset>
-        <legend className="field-label">{S.requests.paymentType}</legend>
-        <div className="flex gap-4">
-          {(["volunteer", "paid"] as const).map((t) => (
-            <label key={t} className="flex items-center gap-1.5 text-sm">
-              <input
-                type="radio"
-                name="paymentType"
-                value={t}
-                checked={paymentType === t}
-                onChange={() => setPaymentType(t)}
-              />
-              {t === "paid" ? S.requests.paid : S.requests.volunteer}
-            </label>
-          ))}
-        </div>
-      </fieldset>
-      {paymentType === "paid" && (
-        <div>
-          <label htmlFor="amount" className="field-label">
-            {S.requests.amount}
+    <fieldset>
+      <legend className="field-label">{S.requests.paymentType}</legend>
+      <div className="flex gap-4">
+        {(["volunteer", "paid"] as const).map((t) => (
+          <label key={t} className="flex items-center gap-1.5 text-sm">
+            <input
+              type="radio"
+              name="paymentType"
+              value={t}
+              checked={paymentType === t}
+              onChange={() => setPaymentType(t)}
+            />
+            {t === "paid" ? S.requests.paid : S.requests.volunteer}
           </label>
-          <input
-            id="amount"
-            name="amount"
-            type="number"
-            min="1"
-            max="99999.99"
-            step="0.01"
-            dir="ltr"
-            defaultValue={defaultAmount ?? ""}
-            required
-            className="field-input"
-          />
-          {fieldErrors?.amount && <p className="field-error">{fieldErrors.amount}</p>}
-        </div>
+        ))}
+      </div>
+      {paymentType === "paid" && (
+        <p className="mt-1 text-xs text-stone-500">{S.requests.paidHint}</p>
       )}
-    </>
+    </fieldset>
   );
 }
 
@@ -198,7 +175,7 @@ export function NewRequestForm({
   return (
     <form action={formAction} className="card space-y-4">
       <CoreFields fieldErrors={fieldErrors} />
-      <PaymentFields defaultType="volunteer" fieldErrors={fieldErrors} />
+      <PaymentFields defaultType="volunteer" />
       <FileUploader
         bucket="request-photos"
         name="photoPaths"
@@ -233,7 +210,6 @@ export function EditRequestForm({
     description: string;
     category: string;
     paymentType: "paid" | "volunteer";
-    amount: number | null;
   };
 }) {
   const boundAction = updateRequest.bind(null, requestId);
@@ -244,11 +220,7 @@ export function EditRequestForm({
     <form action={formAction} className="card space-y-4">
       <h2 className="font-semibold">{S.requests.edit}</h2>
       <CoreFields defaults={defaults} fieldErrors={fieldErrors} />
-      <PaymentFields
-        defaultType={defaults.paymentType}
-        defaultAmount={defaults.amount}
-        fieldErrors={fieldErrors}
-      />
+      <PaymentFields defaultType={defaults.paymentType} />
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}

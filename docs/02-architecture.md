@@ -138,7 +138,6 @@ erDiagram
         text status "open | has_offers | assigned | completed | rated | cancelled"
         bool is_hidden "admin moderation flag"
         text payment_type "paid | volunteer"
-        numeric amount "nullable — paid requests"
         bool is_paid "owner marker, post-completion"
         float lat "request location (requester-confirmed)"
         float lng
@@ -153,7 +152,7 @@ erDiagram
         uuid helper_id FK
         text status "active | selected | closed | withdrawn"
         text message
-        text proposed_terms "nullable — paid requests"
+        numeric price "nullable — the helper's price; null = volunteering"
         text request_title "snapshot for my-offers after parent turns invisible"
     }
     ratings {
@@ -220,7 +219,7 @@ constraints.
 | `review_application(application_id, verdict, note)` | Admin check; updates the application row and the applicant's profile flags together | Two-table atomic write; and an admin UPDATE policy on `profiles` would (row-level!) grant admins write to *every* profile column including `is_admin` — exactly what spec §4.4 forbids |
 | `revoke_verification(user_id, kind)` | Admin check; clears the identity or professional flag (and marks the approval revoked in the audit trail) | Same column-scoping argument as above |
 | `set_request_hidden(request_id, hidden)` | Admin check; touches only `is_hidden` | Guarantees moderation "leaves the lifecycle state untouched" (spec §8.6) by construction |
-| `mark_paid(request_id)` | Owner check; flips `is_paid` once, post-completion, paid type only | A second permissive UPDATE policy would OR with the content-edit policy and reopen edits on finished jobs — permissive policies OR their USING/CHECK clauses independently |
+| `mark_paid(request_id)` | Owner check; flips `is_paid` once, post-completion, only when the selected offer carries a price | A second permissive UPDATE policy would OR with the content-edit policy and reopen edits on finished jobs — permissive policies OR their USING/CHECK clauses independently |
 | `get_counterpart_contact(request_id)` | Read-only: returns the other party's display name + phone (from `profiles_private`), only to the request owner or selected helper, from *assigned* onward | Column-level conditional exposure — row-level SELECT policies cannot reveal one column to one pair of users per row (spec §8.4) |
 
 **Trigger functions (invisible plumbing, same audit list):**

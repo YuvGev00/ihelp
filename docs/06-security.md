@@ -96,11 +96,11 @@ Three rings, outermost to innermost (each mirrors the same bounds):
    `min/max`, `type`) for instant feedback; file type/size checked before
    upload (≤ 5 MB, JPEG/PNG/WebP, ≤ 5 files).
 2. **Server Action**: the authoritative `zod` parse — every field bounded,
-   enums closed, Israeli phone regex, paid⇔amount coupling, and the two
+   enums closed, Israeli phone regex, offer-price bounds, and the two
    regression classes from review baked into tests (absent-field `null`s,
    coordinate coercion to (0,0)).
-3. **Database**: CHECK constraints (lengths, ranges, category set, amount
-   coupling, phone format), enum types (invalid state = type error), unique
+3. **Database**: CHECK constraints (lengths, ranges, category set, offer-price
+   bounds, phone format), enum types (invalid state = type error), unique
    indexes, and RPC-body validation (photo paths must be real objects in the
    caller's own folder — X6).
 

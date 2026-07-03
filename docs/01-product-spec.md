@@ -56,8 +56,10 @@ willing neighbors who have spare capacity but no visibility into nearby demand.
 iHelp inverts the marketplace:
 
 - A **requester** publishes a help request: title, description, category, one or
-  more photos, location, and whether it is **paid** (with a proposed amount) or
-  **volunteer**.
+  more photos, location, and whether it is **paid** or **volunteer** — an
+  *intent*, not a price. **The price is dictated by the helpers**: each offer
+  carries the helper's price, or none at all (offering to help for free —
+  allowed even on paid requests).
 - **Verified helpers** browse open requests — sorted by distance from them — and
   submit offers describing how they would help and on what terms.
 - The requester compares offers (helper profile, verification badge, average
@@ -83,7 +85,7 @@ Trust is built from two independent mechanisms:
 ### What iHelp deliberately is not (MVP)
 
 - **Not a payment platform.** No money moves through the system. A paid request
-  carries an agreed amount as data; after completion the requester can tick a
+  carries the *selected offer's* price as data; after completion the requester can tick a
   "paid" checkbox for record-keeping. Rationale: a real payment gateway adds a
   fragile, paid external dependency and heavy compliance scope with no learning
   value for the MVP; the marketplace mechanics are the product.
@@ -259,7 +261,7 @@ demand (see §6).
    enough requests. Distance-sorted browsing concentrates attention locally.
    Metric: completion rate (assigned → completed) within a pilot area.
 4. **Create the future monetization surface.** Paid/volunteer labeling, agreed
-   amounts, and the paid-marker checkbox record exactly the data (volume and value
+   offer prices, and the paid-marker checkbox record exactly the data (volume and value
    of paid jobs per category/area) needed to price lead fees or commissions later —
    without operating payments now.
 5. **Serve the community.** Volunteer requests are first-class, not a side case.
@@ -276,7 +278,7 @@ Capabilities the software must provide to enable the goals above, and why:
 |---|---|---|
 | C1 | Account registration, login, and session management | All — identity underlies every permission |
 | C2 | User profile with display name, phone number, and stored location (lat/lng captured via the browser's geolocation API, with user consent) | G1, G3 — distance sorting; the phone number is the post-assignment coordination channel (§8.4) |
-| C3 | Help-request creation (identity-verified users only) with title, description, category, ≥1 photo (uploaded to storage), paid/volunteer + amount, and location | G1, G2, G4 |
+| C3 | Help-request creation (identity-verified users only) with title, description, category, ≥1 photo (uploaded to storage), paid/volunteer intent, and location | G1, G2, G4 |
 | C4 | Request browsing for helpers: open requests sorted by distance (computed in application code with the Haversine formula — no external geocoding/maps service); graceful fallback to unsorted list when the user declines location permission | G1, G3 |
 | C5 | Offer submission, editing, and withdrawal by identity-verified users; offer visibility restricted to the offer's owner and the request's owner | G1, G2 |
 | C6 | Atomic offer selection: choosing one offer assigns the request and closes all competing offers in a single transaction (no partial states visible to users) | G1 — the marketplace's pivotal moment must be reliable |
@@ -334,7 +336,8 @@ Posting requires identity verification (§4.1); an unverified user is redirected
 to the verification flow of §8.2.
 
 1. The requester fills in title, description, category, uploads at least one
-   photo, chooses paid (with proposed amount) or volunteer, and confirms the
+   photo, chooses paid or volunteer (an intent — the price comes from the
+   offers), and confirms the
    request location (defaults to profile location). The photo requirement is
    deliberate: it raises request quality and legitimacy, deters spam and
    low-effort posts, and lets helpers scope the work before offering. For tasks
@@ -352,7 +355,8 @@ unverified user can view open requests, but attempting to offer redirects to the
 verification flow of §8.2.
 
 1. A verified helper browses open requests (distance-sorted), opens one, and
-   submits an offer: a message and, for paid requests, their proposed terms.
+   submits an offer: a message and — on paid requests — their price, or no
+   price at all (volunteering; helpers compete on price as well as trust).
    The request's status becomes **has_offers** on the first active offer.
 2. The requester reviews offers side by side — each shows the helper's name,
    badge, average rating, and message — and **selects one**. Atomically: the
@@ -473,7 +477,7 @@ Notes:
 | Select offer (assign) | Request owner only | Status = has_offers; executed atomically |
 | Confirm completion (requester side) | Request owner only | Status = assigned |
 | Confirm completion (helper side) | Selected helper only | Status = assigned |
-| Mark as paid | Request owner only | Status ∈ {completed, rated}; paid requests only |
+| Mark as paid | Request owner only | Status ∈ {completed, rated}; only when the selected offer carries a price |
 | Rate | Request owner only | Status = completed; once per request |
 | View rating | Any signed-in user | Status = rated; shown on the helper's profile |
 | View counterpart contact details | Request owner and selected helper only | Status ∈ {assigned, completed, rated}; via a dedicated, narrowly-scoped read path |
@@ -520,7 +524,7 @@ revealed.
 - Email/password auth; profile with display name, phone number, and optional
   geolocation
 - Help requests: create/edit/cancel by owner, category, ≥1 photo,
-  paid/volunteer + amount, location, full lifecycle of §9
+  paid/volunteer intent, location, full lifecycle of §9
 - Distance-sorted open-request browsing (Haversine, in-app), unsorted fallback
 - Offers: create/edit/withdraw, visibility rules, atomic selection
 - Post-assignment mutual contact reveal (display name + phone, parties only)

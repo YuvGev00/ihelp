@@ -13,7 +13,6 @@ const validRequest = {
   description: "ארון איקאה שהגיע בקרטונים, שעתיים עבודה.",
   category: "repairs",
   paymentType: "paid",
-  amount: "150",
   lat: "32.08",
   lng: "34.78",
   photoPaths: ["user-1/photo.png"],
@@ -34,27 +33,6 @@ describe("requestSchema — invalid inputs (assignment §3.4)", () => {
   it("rejects an unknown category", () => {
     expect(
       requestSchema.safeParse({ ...validRequest, category: "hacking" }).success
-    ).toBe(false);
-  });
-
-  it("enforces the paid⇔amount coupling both ways", () => {
-    expect(
-      requestSchema.safeParse({ ...validRequest, amount: undefined }).success
-    ).toBe(false); // paid without amount
-    expect(
-      requestSchema.safeParse({
-        ...validRequest,
-        paymentType: "volunteer",
-        amount: "50",
-      }).success
-    ).toBe(false); // volunteer with amount
-  });
-
-  it("rejects amounts out of bounds", () => {
-    expect(requestSchema.safeParse({ ...validRequest, amount: "0" }).success).toBe(false);
-    expect(requestSchema.safeParse({ ...validRequest, amount: "-5" }).success).toBe(false);
-    expect(
-      requestSchema.safeParse({ ...validRequest, amount: "100000" }).success
     ).toBe(false);
   });
 
@@ -88,23 +66,26 @@ describe("requestSchema — invalid inputs (assignment §3.4)", () => {
   });
 });
 
-describe("offerSchema — the FormData-null regression class", () => {
-  it("REGRESSION: absent proposedTerms normalized to '' must pass", () => {
-    // volunteer requests render no terms input; action passes ?? ""
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", proposedTerms: "" }).success).toBe(true);
+describe("offerSchema — the helper dictates the price", () => {
+  it("accepts a priced offer and a volunteer (no-price) offer", () => {
+    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "150" }).success).toBe(true);
+    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: undefined }).success).toBe(true);
   });
 
-  it("raw null (un-normalized) is rejected — the action MUST normalize", () => {
-    expect(
-      offerSchema.safeParse({ message: "אשמח לעזור", proposedTerms: null }).success
-    ).toBe(false);
+  it("rejects prices out of bounds", () => {
+    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "0" }).success).toBe(false);
+    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "-5" }).success).toBe(false);
+    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "100000" }).success).toBe(false);
+  });
+
+  it("REGRESSION (FormData-null class): the action normalizes absent price to undefined", () => {
+    // raw null must be normalized by the action before parsing
+    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: null }).success).toBe(false);
   });
 
   it("rejects too-short and too-long messages", () => {
-    expect(offerSchema.safeParse({ message: "היי", proposedTerms: "" }).success).toBe(false);
-    expect(
-      offerSchema.safeParse({ message: "א".repeat(1001), proposedTerms: "" }).success
-    ).toBe(false);
+    expect(offerSchema.safeParse({ message: "היי" }).success).toBe(false);
+    expect(offerSchema.safeParse({ message: "א".repeat(1001) }).success).toBe(false);
   });
 });
 

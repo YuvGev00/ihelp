@@ -7,11 +7,6 @@ import { requestSchema, requestEditSchema } from "@/lib/validation/request";
 import { type ActionResult, DENIED_ERROR, mapDbError } from "@/lib/errors";
 import { zodFieldErrors } from "./helpers";
 
-function parseAmount(formData: FormData) {
-  const raw = formData.get("amount");
-  return raw === null || raw === "" ? undefined : raw;
-}
-
 export async function createRequest(
   _prev: ActionResult | null,
   formData: FormData
@@ -21,7 +16,6 @@ export async function createRequest(
     description: formData.get("description"),
     category: formData.get("category"),
     paymentType: formData.get("paymentType"),
-    amount: parseAmount(formData),
     lat: formData.get("lat"),
     lng: formData.get("lng"),
     photoPaths: formData.getAll("photoPaths").filter(Boolean),
@@ -36,7 +30,6 @@ export async function createRequest(
     p_description: parsed.data.description,
     p_category: parsed.data.category,
     p_payment_type: parsed.data.paymentType,
-    p_amount: parsed.data.amount ?? null,
     p_lat: parsed.data.lat,
     p_lng: parsed.data.lng,
     p_photo_paths: parsed.data.photoPaths,
@@ -58,7 +51,6 @@ export async function updateRequest(
     description: formData.get("description"),
     category: formData.get("category"),
     paymentType: formData.get("paymentType"),
-    amount: parseAmount(formData),
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -72,7 +64,6 @@ export async function updateRequest(
       description: parsed.data.description,
       category: parsed.data.category,
       payment_type: parsed.data.paymentType,
-      amount: parsed.data.amount ?? null,
     })
     .eq("id", requestId)
     .select();

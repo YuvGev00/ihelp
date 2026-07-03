@@ -88,7 +88,7 @@ Constraints and triggers as the last line of defense:
 |---|---|---|
 | D1 | Second *active* offer by same helper on same request | unique-index violation |
 | D2 | Second application of same kind while one is pending | partial-unique violation |
-| D3 | Paid request without amount / volunteer with amount / amount > 99,999.99 | CHECK violation |
+| D3 | Priced offer on a volunteer request / offer price out of bounds; free offers allowed anywhere | policy/CHECK denial |
 | D4 | Second rating for the same request | PK violation |
 | D5 | Professional application without a document | CHECK violation |
 | D6 | Signup trigger creates `profiles` + `profiles_private` rows | rows exist |
@@ -99,7 +99,7 @@ Constraints and triggers as the last line of defense:
 
 Every schema rejects what the DB would reject — same bounds, friendlier
 message: title/description/message length bounds, bad phone formats, stars
-outside 1–5, amount coupling (paid⇔amount), photo count 0 and 6, **absent
+outside 1–5, offer-price bounds, photo count 0 and 6, **absent
 location (the (0,0) "Null Island" regression)**, absent optional fields
 arriving as `null` (the FormData regression class found in review).
 

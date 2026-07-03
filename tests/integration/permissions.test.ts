@@ -43,7 +43,6 @@ describe.skipIf(!stackConfigured)("permissions & DB integrity (integration)", ()
       p_description: "משתמש לא מאומת מנסה לפרסם",
       p_category: "other",
       p_payment_type: "volunteer",
-      p_amount: null,
       p_lat: 32,
       p_lng: 34.8,
       p_photo_paths: [`${unverified.id}/x.png`],
@@ -284,20 +283,45 @@ describe.skipIf(!stackConfigured)("permissions & DB integrity (integration)", ()
     expect(second.error?.message).toMatch(/duplicate|unique/i);
   }, 30_000);
 
-  it("D3: amount/type coupling is CHECK-enforced even via the RPC", async () => {
+  it("D3: a priced offer on a VOLUNTEER request is denied; free offers pass anywhere", async () => {
     const photo = await uploadPhoto(owner);
-    const { error } = await owner.client.rpc("create_request_with_photos", {
-      p_title: "התנדבות עם סכום",
-      p_description: "אמור להיכשל על CHECK של סכום",
-      p_category: "other",
-      p_payment_type: "volunteer",
-      p_amount: 50,
-      p_lat: 32,
-      p_lng: 34.8,
-      p_photo_paths: [photo],
+    const { data: volReq, error: volErr } = await owner.client.rpc(
+      "create_request_with_photos",
+      {
+        p_title: "בקשת התנדבות",
+        p_description: "הצעות עליה חייבות להיות בחינם",
+        p_category: "other",
+        p_payment_type: "volunteer",
+        p_lat: 32,
+        p_lng: 34.8,
+        p_photo_paths: [photo],
+      }
+    );
+    expect(volErr).toBeNull();
+
+    const priced = await helper.client.from("offers").insert({
+      request_id: volReq,
+      helper_id: helper.id,
+      message: "מנסה לגבות על התנדבות",
+      price: 50,
     });
-    expect(error).not.toBeNull();
-  });
+    expect(priced.error).not.toBeNull();
+
+    const free = await helper.client.from("offers").insert({
+      request_id: volReq,
+      helper_id: helper.id,
+      message: "בשמחה, בהתנדבות",
+    });
+    expect(free.error).toBeNull();
+
+    // and a free offer is allowed on a PAID request too (helper's choice)
+    const freeOnPaid = await stranger.client.from("offers").insert({
+      request_id: requestId,
+      helper_id: stranger.id,
+      message: "אשמח לעזור בחינם",
+    });
+    expect(freeOnPaid.error).toBeNull();
+  }, 30_000);
 
   it("D5/X6: photo-path pins — foreign folder and nonexistent object", async () => {
     const { error: foreign } = await owner.client.rpc("create_request_with_photos", {
@@ -305,7 +329,6 @@ describe.skipIf(!stackConfigured)("permissions & DB integrity (integration)", ()
       p_description: "מפנה לתיקייה של משתמש אחר",
       p_category: "other",
       p_payment_type: "volunteer",
-      p_amount: null,
       p_lat: 32,
       p_lng: 34.8,
       p_photo_paths: [`${helper.id}/not-mine.png`],
@@ -317,7 +340,6 @@ describe.skipIf(!stackConfigured)("permissions & DB integrity (integration)", ()
       p_description: "מפנה לאובייקט שלא הועלה",
       p_category: "other",
       p_payment_type: "volunteer",
-      p_amount: null,
       p_lat: 32,
       p_lng: 34.8,
       p_photo_paths: [`${owner.id}/ghost.png`],

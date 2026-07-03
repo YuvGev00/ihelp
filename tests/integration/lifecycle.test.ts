@@ -56,7 +56,7 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
     // F2: two offers; trigger flips open → has_offers
     const { data: offerA, error: offerAErr } = await helperA.client
       .from("offers")
-      .insert({ request_id: requestId, helper_id: helperA.id, message: "אשמח לעזור מחר" })
+      .insert({ request_id: requestId, helper_id: helperA.id, message: "אשמח לעזור מחר", price: 100 })
       .select("id")
       .single();
     expect(offerAErr).toBeNull();

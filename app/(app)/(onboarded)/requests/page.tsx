@@ -31,7 +31,7 @@ export default async function RequestsFeedPage({
   let query = supabase
     .from("help_requests")
     .select(
-      "id, title, category, payment_type, amount, lat, lng, status, created_at"
+      "id, title, category, payment_type, lat, lng, status, created_at"
     )
     .in("status", ["open", "has_offers"])
     .eq("is_hidden", false)
@@ -166,7 +166,7 @@ export default async function RequestsFeedPage({
                 )}
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
                   <StatusChip status={r.status} />
-                  <PaymentChip paymentType={r.payment_type} amount={r.amount} />
+                  <PaymentChip paymentType={r.payment_type} amount={null} />
                   <span className="chip bg-stone-100 text-stone-600">
                     {categoryLabel(r.category)}
                   </span>

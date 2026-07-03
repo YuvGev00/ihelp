@@ -57,7 +57,7 @@ export default async function RequestDetailPage({
       // Sealed bids: RLS returns all offers to the owner, own offer to a helper.
       supabase
         .from("offers")
-        .select("id, helper_id, status, message, proposed_terms, created_at")
+        .select("id, helper_id, status, message, price, created_at")
         .eq("request_id", id)
         .order("created_at"),
       supabase
@@ -130,7 +130,7 @@ export default async function RequestDetailPage({
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <StatusChip status={request.status} />
-          <PaymentChip paymentType={request.payment_type} amount={request.amount} />
+          <PaymentChip paymentType={request.payment_type} amount={null} />
           <span className="chip bg-stone-100 text-stone-600">
             {categoryLabel(request.category)}
           </span>
@@ -178,7 +178,6 @@ export default async function RequestDetailPage({
               description: request.description,
               category: request.category,
               paymentType: request.payment_type,
-              amount: request.amount,
             }}
           />
           <CancelRequestButton requestId={id} />
@@ -195,6 +194,16 @@ export default async function RequestDetailPage({
             <a href={`tel:${contact.phone}`} dir="ltr" className="text-lg text-emerald-700 underline">
               {contact.phone}
             </a>
+          )}
+          {selectedOffer && (
+            <p className="mt-2 text-sm text-stone-700">
+              {S.lifecycle.agreedPrice}:{" "}
+              <b>
+                {selectedOffer.price != null
+                  ? `₪${selectedOffer.price}`
+                  : S.offers.freeOffer}
+              </b>
+            </p>
           )}
         </section>
       )}
@@ -238,7 +247,7 @@ export default async function RequestDetailPage({
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
             {S.lifecycle.completedBoth}
           </p>
-          {isOwner && request.payment_type === "paid" && !request.is_paid && (
+          {isOwner && selectedOffer?.price != null && !request.is_paid && (
             <MarkPaidButton requestId={id} />
           )}
           {isOwner && request.status === "completed" && <RatingForm requestId={id} />}
@@ -287,18 +296,18 @@ export default async function RequestDetailPage({
                         value={agg ? agg.sum / agg.count : null}
                         count={agg?.count ?? 0}
                       />
-                      <span className="ms-auto">
+                      <span className="ms-auto flex items-center gap-1.5">
+                        <span
+                          className={`chip ${o.price != null ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"}`}
+                        >
+                          {o.price != null ? `₪${o.price}` : S.offers.freeOffer}
+                        </span>
                         <span className="chip bg-stone-100 text-stone-600">
                           {S.offers.status[o.status]}
                         </span>
                       </span>
                     </div>
                     <p className="text-sm text-stone-700">{o.message}</p>
-                    {o.proposed_terms && (
-                      <p className="text-sm text-stone-500">
-                        {S.offers.proposedTerms}: {o.proposed_terms}
-                      </p>
-                    )}
                     {request.status === "has_offers" && o.status === "active" && (
                       <AssignButton requestId={id} offerId={o.id} />
                     )}
@@ -317,7 +326,7 @@ export default async function RequestDetailPage({
               ? {
                   id: myOffer.id,
                   message: myOffer.message,
-                  proposedTerms: myOffer.proposed_terms,
+                  price: myOffer.price,
                 }
               : undefined
           }

@@ -11,10 +11,12 @@ export async function createOffer(
   _prev: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  const rawPrice = formData.get("price");
   const parsed = offerSchema.safeParse({
     message: formData.get("message"),
-    // absent on volunteer requests (input not rendered): null would fail zod
-    proposedTerms: formData.get("proposedTerms") ?? "",
+    // absent/empty price = volunteering (input not rendered on volunteer
+    // requests; empty on paid = the helper offers for free)
+    price: rawPrice === null || rawPrice === "" ? undefined : rawPrice,
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -26,12 +28,12 @@ export async function createOffer(
 
   // The INSERT policy is the real gate: verified caller, not own request,
   // request open/has_offers and visible, status pinned to 'active', one active
-  // offer per helper (partial unique index).
+  // offer per helper (partial unique index), price only on paid requests.
   const { error } = await supabase.from("offers").insert({
     request_id: requestId,
     helper_id: user.id,
     message: parsed.data.message,
-    proposed_terms: parsed.data.proposedTerms || null,
+    price: parsed.data.price ?? null,
   });
   if (error) return { ok: false, formError: mapDbError(error) };
 
@@ -46,9 +48,10 @@ export async function updateOffer(
   _prev: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  const rawPrice = formData.get("price");
   const parsed = offerSchema.safeParse({
     message: formData.get("message"),
-    proposedTerms: formData.get("proposedTerms") ?? "",
+    price: rawPrice === null || rawPrice === "" ? undefined : rawPrice,
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -58,7 +61,7 @@ export async function updateOffer(
     .from("offers")
     .update({
       message: parsed.data.message,
-      proposed_terms: parsed.data.proposedTerms || null,
+      price: parsed.data.price ?? null,
     })
     .eq("id", offerId)
     .select();

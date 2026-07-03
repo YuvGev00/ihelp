@@ -95,13 +95,9 @@ create table public.help_requests (
   category      text not null check (category in
                   ('repairs','electricity','plumbing','moving','tutoring',
                    'tech_help','errands','gardening','pets','other')),
+  -- payment_type is the requester's INTENT (feed filter, expectation-setting);
+  -- the PRICE lives on offers — helpers dictate it (product change 2026-07-03)
   payment_type  public.payment_type not null,
-  amount        numeric(10,2),
-  -- paid requests carry a positive bounded amount; volunteer requests carry none
-  constraint amount_matches_type check (
-    (payment_type = 'paid'      and amount is not null and amount > 0 and amount <= 99999.99) or
-    (payment_type = 'volunteer' and amount is null)
-  ),
   -- request location, confirmed by the requester at publish time — NOT NULL:
   -- the spec (C3, §8.3, §9.3) makes location part of every request; a request
   -- helpers cannot locate defeats the distance-sorted marketplace (G3). The
@@ -127,7 +123,10 @@ create table public.offers (
   helper_id      uuid not null references public.profiles(id) on delete cascade,
   status         public.offer_status not null default 'active',
   message        text not null check (char_length(message) between 5 and 1000),
-  proposed_terms text check (proposed_terms is null or char_length(proposed_terms) <= 300),
+  -- the helper's price; NULL = volunteering (allowed even on paid requests —
+  -- generosity is legal). Price on a VOLUNTEER request is denied by the
+  -- offers policies (cross-table rule; a CHECK cannot join).
+  price          numeric(10,2) check (price is null or (price > 0 and price <= 99999.99)),
   -- snapshot set by trigger T4 at insert: /my/offers must render meaningfully
   -- even after the offerer loses SELECT on the parent request (assigned to
   -- someone else / cancelled / hidden — spec §9.2 later-state visibility)
@@ -271,8 +270,8 @@ offers and ratings reference the row forever).
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `offers_select` (SELECT) | `helper_id = auth.uid() or exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id = auth.uid())` | Sealed-bid visibility: owner of the offer + owner of the request, nobody else — including admins (§9.2) |
-| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | Verified users only; not on own request; only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index) |
-| `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn')` | Edit or withdraw while active. The CHECK's closed set is what stops a helper PATCHing their own offer to `selected` — the only two states a helper can write are the two they own (§9.2). `request_id`, `helper_id`, `created_at` are column-guard-protected (below) — otherwise an UPDATE could *re-point* an active offer at a different request, bypassing every INSERT-time check (own-request, open-status, hidden) |
+| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden and (price is null or r.payment_type = 'paid'))` | Verified users only; not on own request; **price only where the requester offered to pay** — a free (null-price) offer is allowed anywhere; only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index) |
+| `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn') and (price is null or <request is paid>)` | Edit or withdraw while active; the price rule holds on edit too. The CHECK's closed set is what stops a helper PATCHing their own offer to `selected` — the only two states a helper can write are the two they own (§9.2). `request_id`, `helper_id`, `created_at` are column-guard-protected (below) — otherwise an UPDATE could *re-point* an active offer at a different request, bypassing every INSERT-time check (own-request, open-status, hidden) |
 
 No DELETE — withdrawn offers stay as history (and as re-offer bookkeeping).
 
@@ -354,7 +353,7 @@ keeps the §10 promise — denied and missing are indistinguishable.
 -- 3.1 Create request + photos atomically; enforce ≥1 photo and path ownership.
 create or replace function public.create_request_with_photos(
   p_title text, p_description text, p_category text,
-  p_payment_type public.payment_type, p_amount numeric,
+  p_payment_type public.payment_type,
   p_lat double precision, p_lng double precision,
   p_photo_paths text[]
 ) returns uuid
@@ -395,9 +394,9 @@ begin
   end if;
 
   insert into public.help_requests
-    (requester_id, title, description, category, payment_type, amount, lat, lng)
+    (requester_id, title, description, category, payment_type, lat, lng)
   values
-    (auth.uid(), p_title, p_description, p_category, p_payment_type, p_amount, p_lat, p_lng)
+    (auth.uid(), p_title, p_description, p_category, p_payment_type, p_lat, p_lng)
   returning id into v_id;
 
   insert into public.request_photos (request_id, storage_path, position)
@@ -607,15 +606,20 @@ end $$;
 create or replace function public.mark_paid(p_request_id uuid)
 returns void
 language plpgsql security definer set search_path = public as $$
-declare v_req public.help_requests%rowtype;
+declare
+  v_req public.help_requests%rowtype;
+  v_price numeric;
 begin
   select * into v_req from public.help_requests
     where id = p_request_id for update;
   if not found or v_req.requester_id <> auth.uid() then
     raise exception 'not_found';   -- error-ordering rule
   end if;
+  -- keyed to the AGREED price (the selected offer's): a volunteered job has
+  -- nothing to mark as paid, even on a payment_type='paid' request
+  select price into v_price from public.offers where id = v_req.assigned_offer_id;
   if v_req.status not in ('completed','rated')
-     or v_req.payment_type <> 'paid' or v_req.is_paid then
+     or v_price is null or v_req.is_paid then
     raise exception 'invalid_state';
   end if;
   update public.help_requests set is_paid = true where id = p_request_id;
@@ -929,8 +933,8 @@ the same bounds for instant feedback. DB constraints (§1.2) are the last line:
 | `profileSchema` | display_name 1–40; phone `^0\d{8,9}$` (optional until verification); lat/lng ranges, both-or-neither |
 | `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; phone required here (`^0\d{8,9}$` — mirrored by the `identity_requires_phone` CHECK); doc_path optional |
 | `professionalApplicationSchema` | doc_path required (mirrored by the `professional_requires_doc` CHECK) |
-| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; payment_type + amount coupling (paid ⇒ 0 < amount ≤ 99999.99 — mirrored in `amount_matches_type`, volunteer ⇒ none); lat/lng required (NOT NULL columns); photo paths 1–5 |
-| `offerSchema` | message 5–1000; proposed_terms ≤ 300 (paid requests) |
+| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; payment_type (intent only — no amount); lat/lng required (NOT NULL columns); photo paths 1–5 |
+| `offerSchema` | message 5–1000; price optional, 0 < price ≤ 99999.99 (empty = volunteering; priced offers on volunteer requests are policy-denied) |
 | `ratingSchema` | stars int 1–5; note ≤ 500 |
 | `reviewSchema` (admin) | note required on rejection, ≤ 500 |
 
@@ -960,7 +964,7 @@ but a request row without photos can never exist (RPC).
 ## 11. UX Design (central experience)
 
 - **The feed is the product's face:** card = photo thumbnail, title, category
-  chip, paid/volunteer chip (with amount), distance chip, time-ago. One tap to
+  chip, paid/volunteer intent chip, distance chip, time-ago. One tap to
   detail. Filters as chips, not menus. RTL, `he` locale dates.
 - **The request detail adapts to the viewer** (same URL, role-dependent panels):
   owner sees offers + assign buttons; a verified helper sees the offer form (or

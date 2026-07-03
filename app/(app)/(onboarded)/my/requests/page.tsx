@@ -14,7 +14,7 @@ export default async function MyRequestsPage() {
 
   const { data: requests } = await supabase
     .from("help_requests")
-    .select("id, title, category, payment_type, amount, status, is_paid, created_at")
+    .select("id, title, category, payment_type, status, is_paid, created_at")
     .eq("requester_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -42,7 +42,7 @@ export default async function MyRequestsPage() {
                 <span className="chip bg-stone-100 text-stone-600">
                   {categoryLabel(r.category)}
                 </span>
-                <PaymentChip paymentType={r.payment_type} amount={r.amount} />
+                <PaymentChip paymentType={r.payment_type} amount={null} />
                 {r.is_paid && (
                   <span className="chip bg-emerald-100 text-emerald-800">
                     {S.lifecycle.markedPaid}

@@ -11,7 +11,7 @@ export function OfferForm({
 }: {
   requestId: string;
   isPaid: boolean;
-  existing?: { id: string; message: string; proposedTerms: string | null };
+  existing?: { id: string; message: string; price: number | null };
 }) {
   const action = existing
     ? updateOffer.bind(null, existing.id, requestId)
@@ -43,18 +43,23 @@ export function OfferForm({
       </div>
       {isPaid && (
         <div>
-          <label htmlFor="proposedTerms" className="field-label">
-            {S.offers.proposedTerms}
+          <label htmlFor="price" className="field-label">
+            {S.offers.price}
           </label>
           <input
-            id="proposedTerms"
-            name="proposedTerms"
-            maxLength={300}
-            defaultValue={existing?.proposedTerms ?? ""}
+            id="price"
+            name="price"
+            type="number"
+            min="1"
+            max="99999.99"
+            step="0.01"
+            dir="ltr"
+            defaultValue={existing?.price ?? ""}
             className="field-input"
           />
-          {state && !state.ok && state.fieldErrors?.proposedTerms && (
-            <p className="field-error">{state.fieldErrors.proposedTerms}</p>
+          <p className="mt-1 text-xs text-stone-500">{S.offers.priceHint}</p>
+          {state && !state.ok && state.fieldErrors?.price && (
+            <p className="field-error">{state.fieldErrors.price}</p>
           )}
         </div>
       )}
