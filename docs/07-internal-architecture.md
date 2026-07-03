@@ -61,11 +61,13 @@ directly to prove it."**
    request + photos in one transaction. *No INSERT policy exists on these
    tables — the RPC is the only door.*
 2. **Offer** — direct insert on `offers`; the INSERT policy pins verified
-   caller, not-own-request, open/visible request, and **`status='active'`**
-   (an offer cannot be born "selected"). Trigger T2 flips the request to
-   `has_offers` (definer — a helper's insert updates the requester's row).
-   Trigger T4 snapshots the request title onto the offer (my-offers renders
-   after the parent becomes invisible).
+   caller, not-own-request, open/visible request, **`status='active'`**
+   (an offer cannot be born "selected"), and the **price rule**: the helper's
+   price rides the offer (null = volunteering, allowed anywhere; a priced offer
+   is allowed only where the requester's intent is *paid*). Trigger T2 flips
+   the request to `has_offers` (definer — a helper's insert updates the
+   requester's row). Trigger T4 snapshots the request title onto the offer
+   (my-offers renders after the parent becomes invisible).
 3. **Assign** — RPC `assign_offer`: owner check (`not_found` for anyone else —
    the error-ordering rule), `FOR UPDATE` lock, guarded updates: request must
    still be `has_offers`, offer must still be `active` (the withdraw race
@@ -85,7 +87,8 @@ directly to prove it."**
 **Product**
 - *Reversed marketplace?* Demand posts once; supply competes — shortens time-to-help (spec §3).
 - *Both sides verified?* A fake request lures a helper as easily as a fake helper harms a requester — symmetric physical risk ⇒ symmetric gate (spec §4.1).
-- *No payments?* External dependency + compliance for zero mechanic-validation value; amount is data, "paid" is a marker (spec §3).
+- *No payments?* External dependency + compliance for zero mechanic-validation value; the agreed price (the selected offer's) is data, "paid" is a marker (spec §3).
+- *Helpers dictate the price?* Deepens the reversed-marketplace mechanic — supply competes on price, not just trust/speed; the request keeps paid/volunteer as *intent* only, and a helper may volunteer even on a paid request (spec §3; priced offers on volunteer requests are policy-denied).
 - *No chat?* Phone reveal after mutual commitment covers coordination; chat is the first post-MVP item (spec §3).
 - *Emergency page static?* Anything that looks like dispatch creates a life-safety expectation we cannot meet — `force-static` + middleware exclusion make it *provably* inert (spec §11).
 

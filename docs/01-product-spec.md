@@ -61,10 +61,11 @@ iHelp inverts the marketplace:
   carries the helper's price, or none at all (offering to help for free —
   allowed even on paid requests).
 - **Verified helpers** browse open requests — sorted by distance from them — and
-  submit offers describing how they would help and on what terms.
+  submit offers describing how they would help and at what price — or for free.
 - The requester compares offers (helper profile, verification badge, average
-  rating, offer message) and **selects one**. All other offers are closed
-  automatically at that moment.
+  rating, **price**, offer message) and **selects one**. All other offers are
+  closed automatically at that moment. Helpers compete on trust, speed, *and*
+  price.
 - After the work is done, **both sides confirm completion**, and the requester
   rates the helper (1–5 stars plus an optional note). Ratings accumulate on the
   helper's public profile, building the platform's trust layer.

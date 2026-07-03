@@ -8,7 +8,7 @@ index) and §5 (hard questions).
 
 | Min | Segment | Assignment bullets covered |
 |---|---|---|
-| 0–1 | **The problem + the product** — finding trustworthy help is slow and one-directional; iHelp reverses it: post a request, verified helpers compete | מה המוצר · איזו בעיה הוא פותר |
+| 0–1 | **The problem + the product** — finding trustworthy help is slow and one-directional; iHelp reverses it: post a request, verified helpers compete on trust, speed, **and price** (each offer carries the helper's price, or is free) | מה המוצר · איזו בעיה הוא פותר |
 | 1–2 | **Users + value** — requesters (free by design), helpers (verified, rated, professional badge), admin; the customer is the professional helper (lead-gen economics); trust is symmetric because physical risk is symmetric | מי המשתמשים · למה יש לו ערך עסקי |
 | 2–7 | **Live demo** (script below) — the full core loop with two browsers | מהם התהליכים המרכזיים |
 | 7–9 | **How it's built** — one-screen architecture (internal doc §1); "the database is the only authority" thesis; the 10-RPC + RLS + guard-trigger design; why Server Actions and no REST; the profiles split story | איך המערכת בנויה · מה הארכיטקטורה |
@@ -29,11 +29,13 @@ keep `/admin` open in a third tab as the admin.
    badges on nothing yet. 20 sec.
 2. **A:** post a request (photo included — mention direct-to-storage upload).
    Land on the detail page: status **פתוחה**. 60 sec.
-3. **B:** open the same request, submit an offer with terms. Point at the
-   sealed-bid note: B will never see competitors. 40 sec.
-4. **A:** refresh — status **יש הצעות**; the offer card shows Yossi's badges +
-   rating average. Assign. Show the contact card appearing (phone revealed only
-   now, only to these two). 60 sec.
+3. **B:** open the same request, submit an offer **with a price (₪120)** —
+   mention the empty-price = volunteer option, and the sealed-bid note: B will
+   never see competitors. 40 sec.
+4. **A:** refresh — status **יש הצעות**; the offer cards show badges, rating
+   averages, **and price chips side by side — the price competition moment**.
+   Assign. Show the contact card appearing (phone revealed only now, only to
+   these two) with המחיר שסוכם. 60 sec.
 5. **A+B:** both press completion confirm — show the "waiting for other side" /
    "הצד השני אישר" states between clicks. 40 sec.
 6. **A:** rate 5 stars → status **דורגה**; open Yossi's profile — the average
