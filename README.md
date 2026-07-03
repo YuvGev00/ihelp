@@ -2,6 +2,8 @@
 
 Final project for **Internet Technologies — Become a Full-Stack Engineer** (RUNI CS 2026).
 
+**🌐 Live app:** https://ihelp-roan.vercel.app · **Repo:** https://github.com/YuvGev00/ihelp
+
 iHelp reverses the help-search model: a requester posts a help request, and
 identity-verified helpers nearby compete to offer help — paid or volunteer.
 Both sides of every transaction pass admin-reviewed identity verification, and
@@ -16,6 +18,11 @@ helpers are rated after completion.
 | [docs/01-product-spec.md](docs/01-product-spec.md) | Product specification — problem, users, customer, goals, processes, state machine, permission matrix |
 | [docs/02-architecture.md](docs/02-architecture.md) | Architecture — components, technology choices, data flows, enforcement layers |
 | [docs/03-technical-design.md](docs/03-technical-design.md) | Technical design — full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
+| [docs/04-testing-spec.md](docs/04-testing-spec.md) | Testing specification — what is tested and why it proves the product works |
+| [docs/05-scale.md](docs/05-scale.md) | Scale — load analysis, indexes, pagination, limits and successors |
+| [docs/06-security.md](docs/06-security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
+| [docs/07-internal-architecture.md](docs/07-internal-architecture.md) | Internal guide — repo tour, flows, decision index (presentation prep) |
+| [docs/08-presentation.md](docs/08-presentation.md) | Presentation plan — 10–15 min outline + demo script |
 
 ## Running locally
 
