@@ -2,6 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { signOut } from "@/actions/auth";
+import { NavLinks } from "@/components/NavLinks";
 import { S } from "@/lib/strings";
 
 /**
@@ -39,23 +40,7 @@ export default async function AppLayout({
           <Link href="/requests" className="text-lg font-bold text-emerald-700">
             {S.appName}
           </Link>
-          <Link href="/requests" className="hover:text-emerald-700">
-            {S.nav.requests}
-          </Link>
-          <Link href="/my/requests" className="hover:text-emerald-700">
-            {S.nav.myRequests}
-          </Link>
-          <Link href="/my/offers" className="hover:text-emerald-700">
-            {S.nav.myOffers}
-          </Link>
-          <Link href="/verification" className="hover:text-emerald-700">
-            {S.nav.verification}
-          </Link>
-          {priv?.is_admin && (
-            <Link href="/admin" className="font-semibold text-purple-700">
-              {S.nav.admin}
-            </Link>
-          )}
+          <NavLinks isAdmin={!!priv?.is_admin} />
           <span className="ms-auto flex items-center gap-4">
             <Link
               href="/emergency"

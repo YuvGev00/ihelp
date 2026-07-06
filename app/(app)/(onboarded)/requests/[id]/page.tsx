@@ -5,6 +5,7 @@ import { categoryLabel } from "@/lib/categories";
 import {
   StatusChip,
   PaymentChip,
+  HiddenChip,
   Badge,
   Stars,
   EmptyState,
@@ -130,13 +131,11 @@ export default async function RequestDetailPage({
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <StatusChip status={request.status} />
-          <PaymentChip paymentType={request.payment_type} amount={null} />
+          <PaymentChip paymentType={request.payment_type} />
           <span className="chip bg-stone-100 text-stone-600">
             {categoryLabel(request.category)}
           </span>
-          {request.is_hidden && (
-            <span className="chip bg-stone-800 text-white">{S.requests.hidden}</span>
-          )}
+          {request.is_hidden && <HiddenChip />}
           {request.is_paid && (
             <span className="chip bg-emerald-100 text-emerald-800">
               {S.lifecycle.markedPaid}
@@ -149,18 +148,22 @@ export default async function RequestDetailPage({
         </p>
       </div>
 
-      {/* Photos */}
+      {/* Photos — fixed-aspect boxes so any image dimensions render cleanly */}
       {signed && signed.length > 0 && (
         <div className="flex gap-2 overflow-x-auto">
           {signed.map((s) =>
             s.signedUrl ? (
-              // eslint-disable-next-line @next/next/no-img-element
-              <img
+              <div
                 key={s.path}
-                src={s.signedUrl}
-                alt=""
-                className="h-48 rounded-xl object-cover"
-              />
+                className="aspect-video h-48 shrink-0 overflow-hidden rounded-xl bg-stone-100"
+              >
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={s.signedUrl}
+                  alt=""
+                  className="h-full w-full object-cover"
+                />
+              </div>
             ) : null
           )}
         </div>

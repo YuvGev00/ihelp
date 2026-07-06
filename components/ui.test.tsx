@@ -31,13 +31,13 @@ describe("StatusChip", () => {
 });
 
 describe("PaymentChip", () => {
-  it("shows the amount on paid requests", () => {
-    render(<PaymentChip paymentType="paid" amount={150} />);
-    expect(screen.getByText(/בתשלום.*150/)).toBeDefined();
+  it("shows the paid intent (price lives on offers, not the request)", () => {
+    render(<PaymentChip paymentType="paid" />);
+    expect(screen.getByText("בתשלום")).toBeDefined();
   });
 
-  it("shows volunteer without an amount", () => {
-    render(<PaymentChip paymentType="volunteer" amount={null} />);
+  it("shows volunteer intent", () => {
+    render(<PaymentChip paymentType="volunteer" />);
     expect(screen.getByText("בהתנדבות")).toBeDefined();
   });
 });

@@ -45,12 +45,72 @@ function must<T extends { error: { message: string } | null }>(
   return result;
 }
 
-// 1x1 PNG placeholder — uploaded per request so the demo respects the
-// ">=1 photo per request" invariant and feed cards render thumbnails.
-const PLACEHOLDER_PNG = Buffer.from(
-  "iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==",
-  "base64"
-);
+import { deflateSync } from "node:zlib";
+
+// A real placeholder image beats a 1x1 stretch: build a proper wide PNG with a
+// soft diagonal two-tone gradient so demo feed cards look like a live
+// marketplace. Zero dependencies — a minimal hand-rolled PNG encoder.
+function crc32(buf: Buffer): number {
+  let c = ~0;
+  for (let i = 0; i < buf.length; i++) {
+    c ^= buf[i];
+    for (let k = 0; k < 8; k++) c = (c >>> 1) ^ (0xedb88320 & -(c & 1));
+  }
+  return ~c >>> 0;
+}
+function pngChunk(type: string, data: Buffer): Buffer {
+  const len = Buffer.alloc(4);
+  len.writeUInt32BE(data.length);
+  const typeBuf = Buffer.from(type, "ascii");
+  const crc = Buffer.alloc(4);
+  crc.writeUInt32BE(crc32(Buffer.concat([typeBuf, data])));
+  return Buffer.concat([len, typeBuf, data, crc]);
+}
+function gradientPng(from: [number, number, number], to: [number, number, number]): Buffer {
+  const W = 320, H = 200;
+  const raw = Buffer.alloc((W * 3 + 1) * H);
+  let p = 0;
+  for (let y = 0; y < H; y++) {
+    raw[p++] = 0; // filter: none
+    for (let x = 0; x < W; x++) {
+      const t = (x / W + y / H) / 2; // diagonal blend
+      raw[p++] = Math.round(from[0] + (to[0] - from[0]) * t);
+      raw[p++] = Math.round(from[1] + (to[1] - from[1]) * t);
+      raw[p++] = Math.round(from[2] + (to[2] - from[2]) * t);
+    }
+  }
+  const ihdr = Buffer.alloc(13);
+  ihdr.writeUInt32BE(W, 0);
+  ihdr.writeUInt32BE(H, 4);
+  ihdr[8] = 8;  // bit depth
+  ihdr[9] = 2;  // color type: RGB
+  return Buffer.concat([
+    Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]),
+    pngChunk("IHDR", ihdr),
+    pngChunk("IDAT", deflateSync(raw)),
+    pngChunk("IEND", Buffer.alloc(0)),
+  ]);
+}
+
+// A calm palette per category so cards are distinguishable at a glance.
+const CATEGORY_GRADIENTS: Record<string, [[number, number, number], [number, number, number]]> = {
+  repairs:     [[214, 240, 229], [140, 200, 170]],
+  electricity: [[253, 240, 210], [240, 200, 120]],
+  plumbing:    [[214, 235, 245], [130, 190, 225]],
+  moving:      [[235, 228, 245], [180, 160, 220]],
+  tutoring:    [[245, 224, 224], [225, 150, 150]],
+  tech_help:   [[220, 235, 240], [140, 190, 205]],
+  errands:     [[224, 240, 224], [150, 205, 150]],
+  gardening:   [[224, 240, 214], [150, 200, 120]],
+  pets:        [[245, 235, 214], [225, 195, 140]],
+  other:       [[232, 232, 232], [180, 180, 190]],
+};
+function categoryImage(category: string): Buffer {
+  const [from, to] = CATEGORY_GRADIENTS[category] ?? CATEGORY_GRADIENTS.other;
+  return gradientPng(from, to);
+}
+// Small neutral image for verification documents.
+const DOC_PNG = gradientPng([230, 230, 235], [200, 200, 210]);
 
 const USERS = [
   { key: "admin", email: "admin@ihelp.demo", name: "מנהל המערכת", phone: "0500000001", admin: true, verified: true },
@@ -127,7 +187,7 @@ async function main() {
   must(
     await db.storage
       .from("verification-docs")
-      .upload(certPath, PLACEHOLDER_PNG, {
+      .upload(certPath, DOC_PNG, {
         contentType: "image/png",
         upsert: true,
       }),
@@ -173,10 +233,12 @@ async function main() {
     if (error) throw error;
     const path = `${fields.requester_id}/seed-photo-${photoSeq++}.png`;
     must(
-      await db.storage.from("request-photos").upload(path, PLACEHOLDER_PNG, {
-        contentType: "image/png",
-        upsert: true,
-      }),
+      await db.storage
+        .from("request-photos")
+        .upload(path, categoryImage(String(fields.category)), {
+          contentType: "image/png",
+          upsert: true,
+        }),
       `photo upload (${path})`
     );
     must(

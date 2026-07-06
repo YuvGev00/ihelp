@@ -155,18 +155,21 @@ export default async function RequestsFeedPage({
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pageItems.map((r) => (
             <li key={r.id}>
-              <Link href={`/requests/${r.id}`} className="card block hover:border-emerald-400">
+              <Link
+                href={`/requests/${r.id}`}
+                className="card block transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md"
+              >
                 {photoByRequest.get(r.id) && (
                   // eslint-disable-next-line @next/next/no-img-element
                   <img
                     src={photoByRequest.get(r.id)!}
                     alt=""
-                    className="mb-3 h-36 w-full rounded-lg object-cover"
+                    className="mb-3 h-36 w-full rounded-lg bg-stone-100 object-cover"
                   />
                 )}
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
                   <StatusChip status={r.status} />
-                  <PaymentChip paymentType={r.payment_type} amount={null} />
+                  <PaymentChip paymentType={r.payment_type} />
                   <span className="chip bg-stone-100 text-stone-600">
                     {categoryLabel(r.category)}
                   </span>
