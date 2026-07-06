@@ -374,12 +374,14 @@ export default async function RequestDetailPage({
         </section>
       ) : null}
 
-      {/* Helper's own offer status after selection/closure */}
-      {myOffer && myOffer.status !== "active" && (
-        <p className="text-sm text-stone-500">
-          {S.offers.yourOffer}: {S.offers.status[myOffer.status]}
-        </p>
-      )}
+      {/* Helper's own offer status after selection/closure — but not for a
+          withdrawn offer (the helper took it back; re-offering is available). */}
+      {myOffer &&
+        !["active", "withdrawn"].includes(myOffer.status) && (
+          <p className="text-sm text-stone-500">
+            {S.offers.yourOffer}: {S.offers.status[myOffer.status]}
+          </p>
+        )}
     </div>
   );
 }

@@ -222,12 +222,17 @@ async function main() {
   // 4. Requests across the lifecycle. Seed inserts set states directly
   // (service role passes the column guard). Every request gets a placeholder
   // photo — the demo must respect the ">=1 photo" invariant the RPC enforces
-  // for real users.
+  // for real users. Each request is spread around central Tel Aviv so the map
+  // and the distance sorting show a realistic range (not one cluster).
   let photoSeq = 0;
+  const spread = () => ({
+    lat: GEO.lat + (Math.random() - 0.5) * 0.06, // ~±3 km
+    lng: GEO.lng + (Math.random() - 0.5) * 0.06,
+  });
   const req = async (fields: Record<string, unknown> & { requester_id: string }) => {
     const { data, error } = await db
       .from("help_requests")
-      .insert({ lat: GEO.lat, lng: GEO.lng, ...fields })
+      .insert({ ...spread(), ...fields })
       .select("id")
       .single();
     if (error) throw error;

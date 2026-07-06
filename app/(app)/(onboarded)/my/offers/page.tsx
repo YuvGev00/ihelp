@@ -11,10 +11,14 @@ export default async function MyOffersPage() {
   } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
+  // Withdrawn offers are hidden from this list — a withdrawal is the helper
+  // taking their offer back, so it should not linger as clutter. The withdraw
+  // action itself still exists (a helper's exit before assignment).
   const { data: offers } = await supabase
     .from("offers")
     .select("id, request_id, request_title, status, message, created_at")
     .eq("helper_id", user.id)
+    .neq("status", "withdrawn")
     .order("created_at", { ascending: false });
 
   // Which parent requests are still visible to this helper? Losing offerers
