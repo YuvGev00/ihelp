@@ -3,6 +3,8 @@ import { createClient } from "@/lib/supabase/server";
 import { haversineKm, formatDistance } from "@/lib/geo";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
 import { StatusChip, PaymentChip, EmptyState, formatDate } from "@/components/ui";
+import { FeedMap } from "@/components/FeedMap";
+import type { MapPin } from "@/components/RequestsMap";
 import { S } from "@/lib/strings";
 
 const FEED_CAP = 200; // architecture §8.1: bounded fetch, in-memory distance sort
@@ -66,6 +68,21 @@ export default async function RequestsFeedPage({
     (pageNum - 1) * PAGE_SIZE,
     pageNum * PAGE_SIZE
   );
+
+  // Map pins for EVERY matching request (not just the current page), so the map
+  // is a live overview of all open help nearby. Coordinates already reach the
+  // client via the map; the browsing UI keeps showing distances, not raw coords
+  // for cards — this is the deliberate exception where the map needs points.
+  const pins: MapPin[] = withDistance.map((r) => ({
+    id: r.id,
+    title: r.title,
+    category: categoryLabel(r.category),
+    paymentLabel: r.payment_type === "paid" ? S.requests.paid : S.requests.volunteer,
+    distanceText:
+      r.distanceKm != null ? `${formatDistance(r.distanceKm)} ${S.requests.away}` : null,
+    lat: r.lat,
+    lng: r.lng,
+  }));
 
   // First photo per request, one bulk signed-URL call for the page.
   const ids = pageItems.map((r) => r.id);
@@ -148,6 +165,9 @@ export default async function RequestsFeedPage({
           </Link>
         ))}
       </div>
+
+      {/* Map overview of all matching requests (collapsible) */}
+      <FeedMap pins={pins} />
 
       {!pageItems.length ? (
         <EmptyState message={S.requests.noOpenRequests} />

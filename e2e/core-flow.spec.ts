@@ -31,6 +31,11 @@ test("core marketplace loop through the UI", async ({ browser }) => {
   const requester = await requesterCtx.newPage();
   await signIn(requester, REQUESTER);
 
+  // The feed offers a collapsible map of all open requests (pins per request).
+  await requester.goto("/requests");
+  await requester.getByRole("button", { name: /תצוגת מפה/ }).click();
+  await expect(requester.locator(".leaflet-container")).toBeVisible();
+
   await requester.goto("/requests/new");
   await requester.getByLabel("כותרת").fill(title);
   await requester
