@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { OfferForm } from "@/components/OfferForm";
 import { EditRequestForm } from "@/components/RequestForm";
+import { MapView } from "@/components/MapView";
 import {
   AssignButton,
   CancelRequestButton,
@@ -173,6 +174,15 @@ export default async function RequestDetailPage({
       )}
 
       <p className="whitespace-pre-wrap text-stone-700">{request.description}</p>
+
+      {/* Location — display-only OpenStreetMap; the distance chip elsewhere is
+          the dependency-free source of truth, so the map is purely additive. */}
+      <section>
+        <h2 className="mb-2 text-sm font-semibold text-stone-700">
+          {S.requests.mapTitle}
+        </h2>
+        <MapView lat={request.lat} lng={request.lng} />
+      </section>
 
       {/* Owner tools while editable */}
       {editable && (

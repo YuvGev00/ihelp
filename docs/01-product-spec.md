@@ -551,7 +551,7 @@ revealed.
 | In-app chat | Coordination works off-platform after contact exchange; chat is the first post-MVP candidate |
 | Video on requests | Storage/bandwidth cost disproportionate to MVP value; photos suffice |
 | Push/email notifications | Polling the UI suffices at MVP scale |
-| PostGIS / geocoding APIs | Haversine in TypeScript is sufficient at city scale and keeps deployment self-contained |
+| PostGIS / geocoding (address-search) APIs | Distance uses Haversine in TypeScript (sufficient at city scale, dependency-free). A **display-only** map (Leaflet + OpenStreetMap raster tiles, no API key) is included for viewing/picking a request's location; **address search/geocoding** is excluded — it needs a paid/keyed service and would dent the deploy's independence |
 | Editing/deleting ratings (incl. admin moderation of rating notes) | Parties cannot edit a submitted rating — this blocks post-hoc pressure on the requester to soften it; the absence of rating moderation is an accepted, documented limitation |
 | Two-sided ratings / requester reputation (incl. surfacing cancellation counts) | Requester-only rating answers the single monetizable trust question (§8.5); requester-side reputation is the first trust-layer extension after MVP |
 | Un-assign / re-open transition | Cancel-and-repost is accepted friction; terminal-cancel-only keeps the state machine and atomic assignment simple (§9.1) |

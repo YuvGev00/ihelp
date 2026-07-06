@@ -113,6 +113,8 @@ export const S = {
     cancelConfirm: "לבטל את הבקשה? כל ההצעות ייסגרו וזה סופי.",
     distanceUnknown: "ללא מיון מרחק",
     away: "ממך",
+    mapTitle: "מיקום הבקשה",
+    mapPickerHint: "לחצו על המפה כדי לסמן את מיקום הבקשה",
     noOpenRequests: "אין בקשות פתוחות כרגע — פרסמו את הבקשה הראשונה!",
     myRequestsTitle: "הבקשות שלי",
     noMyRequests: "עוד לא פרסמת בקשות",

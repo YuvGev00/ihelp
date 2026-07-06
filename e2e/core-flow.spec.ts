@@ -38,6 +38,10 @@ test("core marketplace loop through the UI", async ({ browser }) => {
     .fill("בדיקת קצה-לקצה: תיאור ארוך מספיק כדי לעבור ולידציה.");
   await requester.getByLabel("קטגוריה").selectOption("tech_help");
   await requester.getByRole("radio", { name: "בתשלום" }).check();
+  // the location picker renders a Leaflet map with OSM attribution
+  await expect(
+    requester.locator(".leaflet-container").first()
+  ).toBeVisible();
   await requester
     .locator('input[type="file"]')
     .setInputFiles({ name: "photo.png", mimeType: "image/png", buffer: TINY_PNG });
@@ -48,6 +52,8 @@ test("core marketplace loop through the UI", async ({ browser }) => {
   const requestUrl = requester.url();
   await expect(requester.getByRole("heading", { name: title })).toBeVisible();
   await expect(requester.getByText("פתוחה")).toBeVisible();
+  // the detail page renders a display-only location map
+  await expect(requester.locator(".leaflet-container").first()).toBeVisible();
 
   // --- Helper offers ---------------------------------------------------------
   const helperCtx = await browser.newContext();

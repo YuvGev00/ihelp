@@ -25,9 +25,14 @@ Principles that shaped every choice below:
 2. **Smallest possible surface.** One web app, one database, no custom API server,
    no background workers, no queues. Fewer parts to build, test, secure, and
    explain.
-3. **Zero fragile dependencies.** No external API beyond Supabase and Vercel — no
-   geocoding, no payment gateway, no SMS. Demo day cannot be broken by a
-   third-party outage or an expired trial key.
+3. **Minimal external dependencies.** No payment gateway, no SMS, no
+   geocoding/address-search API. The one third-party runtime dependency is
+   **OpenStreetMap raster tiles** for a display-only location map (Leaflet,
+   bundled from npm — not a CDN — with no API key). It is purely additive: the
+   dependency-free Haversine distance chip remains the source of truth, so if
+   tiles fail the app still functions. (Assignment stage 3 explicitly asks which
+   external services are integrated and why — this is the one, and its blast
+   radius is a blank map square.)
 4. **Hebrew RTL UI, English code.** UI copy lives in one Hebrew strings module;
    code, comments, and docs are English.
 

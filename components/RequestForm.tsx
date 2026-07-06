@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState } from "react";
+import dynamic from "next/dynamic";
 import { createRequest, updateRequest } from "@/actions/requests";
 import { FileUploader } from "@/components/FileUploader";
 import { CATEGORIES } from "@/lib/categories";
@@ -108,7 +109,13 @@ function CoreFields({
   );
 }
 
-/** Location confirm (spec §8.3): profile default, or capture on the spot. */
+// The map picker is client-only (Leaflet needs the DOM); load it lazily.
+const MapPicker = dynamic(
+  () => import("@/components/MapPicker").then((m) => m.MapPicker),
+  { ssr: false }
+);
+
+/** Location confirm (spec §8.3): GPS capture, or click the map to place a pin. */
 function LocationField({
   profileLocation,
   fieldError,
@@ -117,6 +124,7 @@ function LocationField({
   fieldError?: string;
 }) {
   const [loc, setLoc] = useState(profileLocation);
+  const [fromProfile, setFromProfile] = useState(!!profileLocation);
   const [status, setStatus] = useState<"idle" | "busy" | "denied">("idle");
 
   function capture() {
@@ -124,6 +132,7 @@ function LocationField({
     navigator.geolocation.getCurrentPosition(
       (pos) => {
         setLoc({ lat: pos.coords.latitude, lng: pos.coords.longitude });
+        setFromProfile(false);
         setStatus("idle");
       },
       () => setStatus("denied"),
@@ -137,7 +146,7 @@ function LocationField({
       {loc ? (
         <p className="text-sm text-emerald-700">
           {S.profile.locationSet}{" "}
-          {loc === profileLocation && `(${S.requests.locationFromProfile})`}
+          {fromProfile && `(${S.requests.locationFromProfile})`}
         </p>
       ) : (
         <p className="text-sm text-stone-500">{S.profile.locationUnset}</p>
@@ -146,13 +155,21 @@ function LocationField({
         type="button"
         onClick={capture}
         disabled={status === "busy"}
-        className="btn-secondary mt-1"
+        className="btn-secondary mb-2 mt-1"
       >
         {status === "busy" ? S.common.loading : S.requests.locationConfirm}
       </button>
       {status === "denied" && (
-        <p className="field-error">{S.profile.locationDenied}</p>
+        <p className="field-error mb-1">{S.profile.locationDenied}</p>
       )}
+      {/* Click-the-map alternative to GPS */}
+      <MapPicker
+        initial={loc}
+        onChange={(c) => {
+          setLoc(c);
+          setFromProfile(false);
+        }}
+      />
       {loc && (
         <>
           <input type="hidden" name="lat" value={loc.lat} />
