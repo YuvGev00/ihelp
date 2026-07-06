@@ -478,7 +478,7 @@ Notes:
 | Edit request | Request owner only | Status ∈ {open, has_offers} |
 | Cancel request | Request owner only | Any status before *completed* |
 | Submit offer | Identity-verified users only | Request status ∈ {open, has_offers}; not on own request; one active offer per helper per request |
-| View offer | Offer owner and request owner only | — |
+| View offer | Offer owner and request owner only | The requester's comparison view lists only *live* offers (active/selected); a withdrawn or auto-closed offer disappears for the requester but remains visible to its own owner as history |
 | Edit/withdraw offer | Offer owner only | While offer is *active* |
 | Select offer (assign) | Request owner only | Status = has_offers; executed atomically |
 | Confirm completion (requester side) | Request owner only | Status = assigned |

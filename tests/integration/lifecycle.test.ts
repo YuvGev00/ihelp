@@ -185,6 +185,15 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
       .eq("id", requestId)
       .single();
     expect(after?.status).toBe("open");
+
+    // The requester's comparison view shows only LIVE offers (active/selected):
+    // a withdrawn offer must not appear there (the page filters on status).
+    const { data: live } = await requester.client
+      .from("offers")
+      .select("id, status")
+      .eq("request_id", requestId)
+      .in("status", ["active", "selected"]);
+    expect(live?.length).toBe(0);
   }, 30_000);
 
   it("X1: assigning a just-withdrawn offer rolls back atomically", async () => {

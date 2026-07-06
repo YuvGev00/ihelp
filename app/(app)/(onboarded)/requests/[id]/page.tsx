@@ -278,11 +278,18 @@ export default async function RequestDetailPage({
         </section>
       )}
 
-      {/* Offers section */}
+      {/* Offers section — the requester only compares LIVE offers. A helper who
+          withdrew (or whose offer was auto-closed on assignment) no longer
+          appears here; the offer stays visible only to its own owner. */}
       {isOwner ? (
+        (() => {
+          const liveOffers = (offers ?? []).filter((o) =>
+            ["active", "selected"].includes(o.status)
+          );
+          return (
         <section className="space-y-3">
           <h2 className="text-lg font-semibold">{S.offers.sectionTitle}</h2>
-          {!offers?.length ? (
+          {!liveOffers.length ? (
             <EmptyState
               message={
                 ["open", "has_offers"].includes(request.status) &&
@@ -293,7 +300,7 @@ export default async function RequestDetailPage({
             />
           ) : (
             <ul className="space-y-3">
-              {offers.map((o) => {
+              {liveOffers.map((o) => {
                 const hp = profileById.get(o.helper_id);
                 const agg = ratingAgg.get(o.helper_id);
                 return (
@@ -330,6 +337,8 @@ export default async function RequestDetailPage({
             </ul>
           )}
         </section>
+          );
+        })()
       ) : canOffer ? (
         <OfferForm
           requestId={id}
