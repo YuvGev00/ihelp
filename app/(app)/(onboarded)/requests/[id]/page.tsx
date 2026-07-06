@@ -4,6 +4,7 @@ import { createClient } from "@/lib/supabase/server";
 import { categoryLabel } from "@/lib/categories";
 import {
   StatusChip,
+  PublicStatusChip,
   HiddenChip,
   Badge,
   Stars,
@@ -130,10 +131,15 @@ export default async function RequestDetailPage({
 
   return (
     <div className="mx-auto max-w-2xl space-y-6">
-      {/* Header */}
+      {/* Header — the owner/admin see the true status; a browsing helper sees
+          the public one (has_offers → "open", so offer counts stay private). */}
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
-          <StatusChip status={request.status} />
+          {isOwner ? (
+            <StatusChip status={request.status} />
+          ) : (
+            <PublicStatusChip status={request.status} />
+          )}
           <span className="chip bg-stone-100 text-stone-600">
             {categoryLabel(request.category)}
           </span>

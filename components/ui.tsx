@@ -66,6 +66,16 @@ export function StatusChip({ status }: { status: string }) {
   );
 }
 
+/**
+ * Status as a non-owner sees it. How many offers a request has is the
+ * requester's private information (sealed bids) — a browsing helper must not
+ * learn it, so `has_offers` reads as plain "open". Only the owner (and admin)
+ * see the true `has_offers` state.
+ */
+export function PublicStatusChip({ status }: { status: string }) {
+  return <StatusChip status={status === "has_offers" ? "open" : status} />;
+}
+
 /** Shown to the owner/admin on a moderated request (invisible to browsers). */
 export function HiddenChip() {
   return <span className="chip bg-stone-800 text-white">{S.requests.hidden}</span>;

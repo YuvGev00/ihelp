@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm, formatDistance } from "@/lib/geo";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
-import { StatusChip, EmptyState, formatDate } from "@/components/ui";
+import { PublicStatusChip, EmptyState, formatDate } from "@/components/ui";
 import { FeedMap } from "@/components/FeedMap";
 import type { MapPin } from "@/components/RequestsMap";
 import { S } from "@/lib/strings";
@@ -217,7 +217,7 @@ export default async function RequestsFeedPage({
                   />
                 )}
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                  <StatusChip status={r.status} />
+                  <PublicStatusChip status={r.status} />
                   <span className="chip bg-stone-100 text-stone-600">
                     {categoryLabel(r.category)}
                   </span>

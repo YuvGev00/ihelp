@@ -50,6 +50,7 @@ export function RequestsMap({ pins }: { pins: MapPin[] }) {
           </div>`;
         const marker = L.marker([p.lat, p.lng]).bindPopup(html);
         marker.on("mouseover", () => marker.openPopup());
+        marker.on("mouseout", () => marker.closePopup());
         marker.on("click", () => router.push(`/requests/${p.id}`));
         layer.addLayer(marker);
         bounds.extend([p.lat, p.lng]);
