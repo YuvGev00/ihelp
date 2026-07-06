@@ -11,7 +11,6 @@ export const requestSchema = z.object({
     .min(10, "תיאור — 10 תווים לפחות")
     .max(2000, "עד 2000 תווים"),
   category: z.enum(CATEGORY_KEYS, { message: "יש לבחור קטגוריה" }),
-  paymentType: z.enum(["paid", "volunteer"]),
   // string-first: z.coerce.number() turns null/"" into 0 ("Null Island");
   // an absent hidden input must FAIL, not become coordinates (0,0)
   lat: z
@@ -36,7 +35,6 @@ export const requestEditSchema = z.object({
     .min(10, "תיאור — 10 תווים לפחות")
     .max(2000, "עד 2000 תווים"),
   category: z.enum(CATEGORY_KEYS, { message: "יש לבחור קטגוריה" }),
-  paymentType: z.enum(["paid", "volunteer"]),
 });
 
 /** Client-side upload bounds (re-bounded server-side by bucket config). */

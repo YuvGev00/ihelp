@@ -7,36 +7,6 @@ import { FileUploader } from "@/components/FileUploader";
 import { CATEGORIES } from "@/lib/categories";
 import { S } from "@/lib/strings";
 
-function PaymentFields({
-  defaultType,
-}: {
-  defaultType: "paid" | "volunteer";
-}) {
-  const [paymentType, setPaymentType] = useState<"paid" | "volunteer">(defaultType);
-  return (
-    <fieldset>
-      <legend className="field-label">{S.requests.paymentType}</legend>
-      <div className="flex gap-4">
-        {(["volunteer", "paid"] as const).map((t) => (
-          <label key={t} className="flex items-center gap-1.5 text-sm">
-            <input
-              type="radio"
-              name="paymentType"
-              value={t}
-              checked={paymentType === t}
-              onChange={() => setPaymentType(t)}
-            />
-            {t === "paid" ? S.requests.paid : S.requests.volunteer}
-          </label>
-        ))}
-      </div>
-      {paymentType === "paid" && (
-        <p className="mt-1 text-xs text-stone-500">{S.requests.paidHint}</p>
-      )}
-    </fieldset>
-  );
-}
-
 function CoreFields({
   defaults,
   fieldErrors,
@@ -192,7 +162,6 @@ export function NewRequestForm({
   return (
     <form action={formAction} className="card space-y-4">
       <CoreFields fieldErrors={fieldErrors} />
-      <PaymentFields defaultType="volunteer" />
       <FileUploader
         bucket="request-photos"
         name="photoPaths"
@@ -226,7 +195,6 @@ export function EditRequestForm({
     title: string;
     description: string;
     category: string;
-    paymentType: "paid" | "volunteer";
   };
 }) {
   const boundAction = updateRequest.bind(null, requestId);
@@ -237,7 +205,6 @@ export function EditRequestForm({
     <form action={formAction} className="card space-y-4">
       <h2 className="font-semibold">{S.requests.edit}</h2>
       <CoreFields defaults={defaults} fieldErrors={fieldErrors} />
-      <PaymentFields defaultType={defaults.paymentType} />
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}

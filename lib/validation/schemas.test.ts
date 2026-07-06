@@ -12,7 +12,6 @@ const validRequest = {
   title: "עזרה בהרכבת ארון",
   description: "ארון איקאה שהגיע בקרטונים, שעתיים עבודה.",
   category: "repairs",
-  paymentType: "paid",
   lat: "32.08",
   lng: "34.78",
   photoPaths: ["user-1/photo.png"],
@@ -60,7 +59,6 @@ describe("requestSchema — invalid inputs (assignment §3.4)", () => {
         title: "כותרת תקינה",
         description: "תיאור ארוך מספיק לבדיקה",
         category: "moving",
-        paymentType: "volunteer",
       }).success
     ).toBe(true);
   });

@@ -2,7 +2,7 @@ import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
 import { categoryLabel } from "@/lib/categories";
-import { StatusChip, PaymentChip, HiddenChip, EmptyState, formatDate } from "@/components/ui";
+import { StatusChip, HiddenChip, EmptyState, formatDate } from "@/components/ui";
 import { S } from "@/lib/strings";
 
 export default async function MyRequestsPage() {
@@ -14,7 +14,7 @@ export default async function MyRequestsPage() {
 
   const { data: requests } = await supabase
     .from("help_requests")
-    .select("id, title, category, payment_type, status, is_paid, is_hidden, created_at")
+    .select("id, title, category, status, is_paid, is_hidden, created_at")
     .eq("requester_id", user.id)
     .order("created_at", { ascending: false });
 
@@ -43,7 +43,6 @@ export default async function MyRequestsPage() {
                 <span className="chip bg-stone-100 text-stone-600">
                   {categoryLabel(r.category)}
                 </span>
-                <PaymentChip paymentType={r.payment_type} />
                 {r.is_paid && (
                   <span className="chip bg-emerald-100 text-emerald-800">
                     {S.lifecycle.markedPaid}

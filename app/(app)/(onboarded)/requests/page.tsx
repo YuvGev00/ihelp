@@ -2,7 +2,7 @@ import Link from "next/link";
 import { createClient } from "@/lib/supabase/server";
 import { haversineKm, formatDistance } from "@/lib/geo";
 import { CATEGORIES, categoryLabel } from "@/lib/categories";
-import { StatusChip, PaymentChip, EmptyState, formatDate } from "@/components/ui";
+import { StatusChip, EmptyState, formatDate } from "@/components/ui";
 import { FeedMap } from "@/components/FeedMap";
 import type { MapPin } from "@/components/RequestsMap";
 import { S } from "@/lib/strings";
@@ -12,7 +12,6 @@ const PAGE_SIZE = 12;
 
 type SearchParams = Promise<{
   category?: string;
-  payment?: string;
   page?: string;
 }>;
 
@@ -21,7 +20,7 @@ export default async function RequestsFeedPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { category, payment, page } = await searchParams;
+  const { category, page } = await searchParams;
   const pageNum = Math.max(1, Number(page) || 1);
 
   const supabase = await createClient();
@@ -32,16 +31,12 @@ export default async function RequestsFeedPage({
   // Feed rule (design 03 §5): open or has_offers, not hidden, newest first.
   let query = supabase
     .from("help_requests")
-    .select(
-      "id, title, category, payment_type, lat, lng, status, created_at"
-    )
+    .select("id, title, category, lat, lng, status, created_at")
     .in("status", ["open", "has_offers"])
     .eq("is_hidden", false)
     .order("created_at", { ascending: false })
     .limit(FEED_CAP);
   if (category) query = query.eq("category", category);
-  if (payment === "paid" || payment === "volunteer")
-    query = query.eq("payment_type", payment);
 
   const [{ data: requests }, { data: priv }] = await Promise.all([
     query,
@@ -77,7 +72,6 @@ export default async function RequestsFeedPage({
     id: r.id,
     title: r.title,
     category: categoryLabel(r.category),
-    paymentLabel: r.payment_type === "paid" ? S.requests.paid : S.requests.volunteer,
     distanceText:
       r.distanceKm != null ? `${formatDistance(r.distanceKm)} ${S.requests.away}` : null,
     lat: r.lat,
@@ -108,7 +102,7 @@ export default async function RequestsFeedPage({
 
   const params = (overrides: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
-    const merged = { category, payment, ...overrides };
+    const merged = { category, ...overrides };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
     const qs = sp.toString();
     return qs ? `?${qs}` : "";
@@ -150,21 +144,6 @@ export default async function RequestsFeedPage({
           </Link>
         ))}
       </div>
-      <div className="flex gap-2 text-sm">
-        {[
-          { key: undefined, label: "הכל" },
-          { key: "paid", label: S.requests.paid },
-          { key: "volunteer", label: S.requests.volunteer },
-        ].map((p) => (
-          <Link
-            key={p.label}
-            href={`/requests${params({ payment: p.key, page: undefined })}`}
-            className={`chip ${payment === p.key || (!payment && !p.key) ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
-          >
-            {p.label}
-          </Link>
-        ))}
-      </div>
 
       {/* Map overview of all matching requests (collapsible) */}
       <FeedMap pins={pins} />
@@ -189,7 +168,6 @@ export default async function RequestsFeedPage({
                 )}
                 <div className="mb-2 flex flex-wrap items-center gap-1.5">
                   <StatusChip status={r.status} />
-                  <PaymentChip paymentType={r.payment_type} />
                   <span className="chip bg-stone-100 text-stone-600">
                     {categoryLabel(r.category)}
                   </span>

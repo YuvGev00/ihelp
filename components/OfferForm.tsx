@@ -8,11 +8,9 @@ type PricingMode = "fixed" | "volunteer" | "after_job";
 
 export function OfferForm({
   requestId,
-  isPaid,
   existing,
 }: {
   requestId: string;
-  isPaid: boolean;
   existing?: {
     id: string;
     message: string;
@@ -26,13 +24,11 @@ export function OfferForm({
   const [state, formAction, pending] = useActionState(action, null);
   // pricing_mode is immutable once set; on edit it is shown read-only.
   const [mode, setMode] = useState<PricingMode>(
-    existing?.pricingMode ?? (isPaid ? "fixed" : "volunteer")
+    existing?.pricingMode ?? "fixed"
   );
 
-  // On a volunteer request the only valid stance is volunteering.
-  const modeOptions: PricingMode[] = isPaid
-    ? ["fixed", "after_job", "volunteer"]
-    : ["volunteer"];
+  // Every request accepts all three stances — pricing belongs to the helper.
+  const modeOptions: PricingMode[] = ["fixed", "after_job", "volunteer"];
 
   const modeLabel: Record<PricingMode, string> = {
     fixed: S.offers.modeFixed,
@@ -64,36 +60,33 @@ export function OfferForm({
         )}
       </div>
 
-      {isPaid && (
-        <fieldset>
-          <legend className="field-label">{S.offers.pricingLabel}</legend>
-          {existing ? (
-            // pricing_mode cannot change after the offer exists (column guard)
-            <input type="hidden" name="pricingMode" value={mode} />
-          ) : null}
-          <div className="space-y-1.5">
-            {modeOptions.map((m) => (
-              <label key={m} className="flex items-center gap-2 text-sm">
-                <input
-                  type="radio"
-                  name={existing ? undefined : "pricingMode"}
-                  value={m}
-                  checked={mode === m}
-                  disabled={!!existing}
-                  onChange={() => setMode(m)}
-                />
-                {modeLabel[m]}
-              </label>
-            ))}
-          </div>
-          {mode === "after_job" && (
-            <p className="mt-1 text-xs text-stone-500">
-              {S.offers.modeAfterJobHint}
-            </p>
-          )}
-        </fieldset>
-      )}
-      {!isPaid && <input type="hidden" name="pricingMode" value="volunteer" />}
+      <fieldset>
+        <legend className="field-label">{S.offers.pricingLabel}</legend>
+        {existing ? (
+          // pricing_mode cannot change after the offer exists (column guard)
+          <input type="hidden" name="pricingMode" value={mode} />
+        ) : null}
+        <div className="space-y-1.5">
+          {modeOptions.map((m) => (
+            <label key={m} className="flex items-center gap-2 text-sm">
+              <input
+                type="radio"
+                name={existing ? undefined : "pricingMode"}
+                value={m}
+                checked={mode === m}
+                disabled={!!existing}
+                onChange={() => setMode(m)}
+              />
+              {modeLabel[m]}
+            </label>
+          ))}
+        </div>
+        {mode === "after_job" && (
+          <p className="mt-1 text-xs text-stone-500">
+            {S.offers.modeAfterJobHint}
+          </p>
+        )}
+      </fieldset>
 
       {mode === "fixed" && (
         <div>

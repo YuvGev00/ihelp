@@ -9,6 +9,15 @@ This document is the implementation blueprint. The SQL here *is* the schema —
 Phase 4 transcribes it into migrations. Every RLS policy carries the product-spec
 rule it enforces.
 
+> **Later product changes (authoritative in the migrations):** the requester's
+> `payment_type` was removed (migration `0011`) — a request carries no
+> paid/volunteer choice; **pricing is entirely the helper's**, on the offer,
+> via `offers.pricing_mode` ∈ {fixed, volunteer, after_job} + `price` /
+> `final_price` (migrations `0009`–`0011`). Where this document still shows
+> `help_requests.payment_type` or a "charging only on paid requests" offer
+> rule, the migrations supersede it: every request accepts all three offer
+> stances. See `supabase/migrations/0009`–`0011`.
+
 ---
 
 ## 1. Database Schema

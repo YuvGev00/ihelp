@@ -260,7 +260,6 @@ async function main() {
     title: "עזרה בהרכבת ארון",
     description: "ארון איקאה שהגיע בקרטונים, צריך שעתיים של עבודה משותפת.",
     category: "repairs",
-    payment_type: "paid",
   });
 
   const offersReq = await req({
@@ -268,7 +267,6 @@ async function main() {
     title: "תיקון דוד חשמל",
     description: "הדוד מפסיק לחמם. דרוש חשמלאי מוסמך לבדיקה.",
     category: "electricity",
-    payment_type: "paid",
   });
 
   const assignedReq = await req({
@@ -276,7 +274,6 @@ async function main() {
     title: "ליווי לקופת חולים",
     description: "סבתא שלי צריכה ליווי לתור בבוקר, כשעה וחצי.",
     category: "errands",
-    payment_type: "volunteer",
   });
 
   const completedReq = await req({
@@ -284,7 +281,6 @@ async function main() {
     title: "עזרה בהעברת ספה",
     description: "להוריד ספה שלוש קומות ולהעמיס על טנדר.",
     category: "moving",
-    payment_type: "paid",
   });
 
   const ratedReq = await req({
@@ -292,7 +288,6 @@ async function main() {
     title: "התקנת מדפסת ומחשב",
     description: "מחשב חדש שצריך להעביר אליו הכל ולהתקין מדפסת.",
     category: "tech_help",
-    payment_type: "paid",
   });
 
   await req({
@@ -300,7 +295,6 @@ async function main() {
     title: "השקיית גינה בחופשה",
     description: "שבוע בחו\"ל, צריך השקיה פעמיים.",
     category: "gardening",
-    payment_type: "volunteer",
     status: "cancelled",
     cancelled_at: new Date().toISOString(),
   });
@@ -310,7 +304,6 @@ async function main() {
     title: "בקשה שהוסתרה לדוגמה",
     description: "תוכן שנחסם על ידי מנהל לצורך הדגמת moderation.",
     category: "other",
-    payment_type: "volunteer",
     is_hidden: true,
   });
 
@@ -420,7 +413,6 @@ async function main() {
     title: "החלפת שקע שרוף",
     description: "שקע במטבח הפסיק לעבוד ומריח שרוף — צריך החלפה.",
     category: "electricity",
-    payment_type: "paid",
   });
   const selRated2 = await offer({
     request_id: ratedReq2,

@@ -66,15 +66,6 @@ export function StatusChip({ status }: { status: string }) {
   );
 }
 
-/** payment_type is intent only — the price lives on offers, so no amount here. */
-export function PaymentChip({ paymentType }: { paymentType: string }) {
-  return paymentType === "paid" ? (
-    <span className="chip bg-amber-100 text-amber-800">{S.requests.paid}</span>
-  ) : (
-    <span className="chip bg-teal-100 text-teal-800">{S.requests.volunteer}</span>
-  );
-}
-
 /** Shown to the owner/admin on a moderated request (invisible to browsers). */
 export function HiddenChip() {
   return <span className="chip bg-stone-800 text-white">{S.requests.hidden}</span>;

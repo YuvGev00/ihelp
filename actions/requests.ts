@@ -15,7 +15,6 @@ export async function createRequest(
     title: formData.get("title"),
     description: formData.get("description"),
     category: formData.get("category"),
-    paymentType: formData.get("paymentType"),
     lat: formData.get("lat"),
     lng: formData.get("lng"),
     photoPaths: formData.getAll("photoPaths").filter(Boolean),
@@ -29,7 +28,6 @@ export async function createRequest(
     p_title: parsed.data.title,
     p_description: parsed.data.description,
     p_category: parsed.data.category,
-    p_payment_type: parsed.data.paymentType,
     p_lat: parsed.data.lat,
     p_lng: parsed.data.lng,
     p_photo_paths: parsed.data.photoPaths,
@@ -50,7 +48,6 @@ export async function updateRequest(
     title: formData.get("title"),
     description: formData.get("description"),
     category: formData.get("category"),
-    paymentType: formData.get("paymentType"),
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -63,7 +60,6 @@ export async function updateRequest(
       title: parsed.data.title,
       description: parsed.data.description,
       category: parsed.data.category,
-      payment_type: parsed.data.paymentType,
     })
     .eq("id", requestId)
     .select();

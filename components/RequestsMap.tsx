@@ -11,7 +11,6 @@ export type MapPin = {
   id: string;
   title: string;
   category: string; // already-localized label
-  paymentLabel: string; // "בתשלום" / "בהתנדבות"
   distanceText: string | null; // "2.4 ק"מ ממך" or null
   lat: number;
   lng: number;
@@ -45,7 +44,7 @@ export function RequestsMap({ pins }: { pins: MapPin[] }) {
         const html = `
           <div dir="rtl" style="min-width:160px">
             <strong>${escapeHtml(p.title)}</strong><br/>
-            <span style="color:#57534e">${escapeHtml(p.category)} · ${escapeHtml(p.paymentLabel)}</span><br/>
+            <span style="color:#57534e">${escapeHtml(p.category)}</span><br/>
             ${p.distanceText ? `<span style="color:#78716c;font-size:12px">${escapeHtml(p.distanceText)}</span><br/>` : ""}
             <a href="/requests/${p.id}" style="color:#047857;font-weight:600">${S.requests.viewRequest} ←</a>
           </div>`;

@@ -42,7 +42,6 @@ test("core marketplace loop through the UI", async ({ browser }) => {
     .getByLabel("תיאור")
     .fill("בדיקת קצה-לקצה: תיאור ארוך מספיק כדי לעבור ולידציה.");
   await requester.getByLabel("קטגוריה").selectOption("tech_help");
-  await requester.getByRole("radio", { name: "בתשלום" }).check();
   // the location picker renders a Leaflet map with OSM attribution
   await expect(
     requester.locator(".leaflet-container").first()

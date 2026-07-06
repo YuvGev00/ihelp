@@ -138,7 +138,6 @@ export async function createRequestFixture(
       p_title: "בקשת בדיקה",
       p_description: "תיאור ארוך מספיק לבדיקות אינטגרציה",
       p_category: "repairs",
-      p_payment_type: "paid",
       p_lat: 32.08,
       p_lng: 34.78,
       p_photo_paths: [photo],

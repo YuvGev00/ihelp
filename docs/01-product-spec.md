@@ -56,13 +56,12 @@ willing neighbors who have spare capacity but no visibility into nearby demand.
 iHelp inverts the marketplace:
 
 - A **requester** publishes a help request: title, description, category, one or
-  more photos, location, and whether it is **paid** or **volunteer** — an
-  *intent*, not a price. **The price is dictated by the helpers**: each offer
-  declares one of three stances: a **fixed price** now, **volunteering** (free),
-  or **"price decided after the job"** — because many jobs (a plumber, an
-  electrician) can't be quoted before the helper sees the problem. In the
-  after-the-job stance the helper enters the final amount once the work is done.
-  Volunteering is allowed even on a paid request.
+  more photos, and location — **no payment/pricing choice**. A request is simply a
+  description of what is needed. **Pricing is entirely the helper's**: each offer
+  declares one of three stances — a **fixed price** now, **volunteering** (free),
+  or **"price decided after the job"** (many jobs, like a plumber's or
+  electrician's, can't be quoted before the helper sees the problem; the final
+  amount is entered once the work is done). Every request accepts all three.
 - **Verified helpers** browse open requests — sorted by distance from them — and
   submit offers describing how they would help and at what price — or for free.
 - The requester compares offers (helper profile, verification badge, average
@@ -282,7 +281,7 @@ Capabilities the software must provide to enable the goals above, and why:
 |---|---|---|
 | C1 | Account registration, login, and session management | All — identity underlies every permission |
 | C2 | User profile with display name, phone number, and stored location (lat/lng captured via the browser's geolocation API, with user consent) | G1, G3 — distance sorting; the phone number is the post-assignment coordination channel (§8.4) |
-| C3 | Help-request creation (identity-verified users only) with title, description, category, ≥1 photo (uploaded to storage), paid/volunteer intent, and location | G1, G2, G4 |
+| C3 | Help-request creation (identity-verified users only) with title, description, category, ≥1 photo (uploaded to storage), and location — no payment choice (pricing is the helper's, per offer) | G1, G2, G4 |
 | C4 | Request browsing for helpers: open requests sorted by distance (computed in application code with the Haversine formula — no external geocoding/maps service); graceful fallback to unsorted list when the user declines location permission | G1, G3 |
 | C5 | Offer submission, editing, and withdrawal by identity-verified users; offer visibility restricted to the offer's owner and the request's owner | G1, G2 |
 | C6 | Atomic offer selection: choosing one offer assigns the request and closes all competing offers in a single transaction (no partial states visible to users) | G1 — the marketplace's pivotal moment must be reliable |
@@ -340,8 +339,7 @@ Posting requires identity verification (§4.1); an unverified user is redirected
 to the verification flow of §8.2.
 
 1. The requester fills in title, description, category, uploads at least one
-   photo, chooses paid or volunteer (an intent — the price comes from the
-   offers), and confirms the
+   photo, and confirms the
    request location (defaults to profile location). The photo requirement is
    deliberate: it raises request quality and legitimacy, deters spam and
    low-effort posts, and lets helpers scope the work before offering. For tasks
@@ -530,7 +528,7 @@ revealed.
 - Email/password auth; profile with display name, phone number, and optional
   geolocation
 - Help requests: create/edit/cancel by owner, category, ≥1 photo,
-  paid/volunteer intent, location, full lifecycle of §9
+  location, full lifecycle of §9 (no payment choice — pricing is the helper's)
 - Distance-sorted open-request browsing (Haversine, in-app), unsorted fallback
 - Offers: create/edit/withdraw, visibility rules, atomic selection
 - Post-assignment mutual contact reveal (display name + phone, parties only)

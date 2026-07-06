@@ -4,7 +4,6 @@ import { createClient } from "@/lib/supabase/server";
 import { categoryLabel } from "@/lib/categories";
 import {
   StatusChip,
-  PaymentChip,
   HiddenChip,
   Badge,
   Stars,
@@ -135,7 +134,6 @@ export default async function RequestDetailPage({
       <div>
         <div className="mb-2 flex flex-wrap items-center gap-1.5">
           <StatusChip status={request.status} />
-          <PaymentChip paymentType={request.payment_type} />
           <span className="chip bg-stone-100 text-stone-600">
             {categoryLabel(request.category)}
           </span>
@@ -193,7 +191,6 @@ export default async function RequestDetailPage({
               title: request.title,
               description: request.description,
               category: request.category,
-              paymentType: request.payment_type,
             }}
           />
           <CancelRequestButton requestId={id} />
@@ -352,7 +349,6 @@ export default async function RequestDetailPage({
       ) : canOffer ? (
         <OfferForm
           requestId={id}
-          isPaid={request.payment_type === "paid"}
           existing={
             myOffer?.status === "active"
               ? {

@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 import { describe, expect, it } from "vitest";
 import { render, screen } from "@testing-library/react";
-import { Badge, Stars, StatusChip, PaymentChip } from "./ui";
+import { Badge, Stars, StatusChip } from "./ui";
 
 describe("Stars", () => {
   it("shows the empty state when there are no ratings", () => {
@@ -27,18 +27,6 @@ describe("StatusChip", () => {
   ])("renders the Hebrew label for %s", (status, label) => {
     render(<StatusChip status={status} />);
     expect(screen.getByText(label)).toBeDefined();
-  });
-});
-
-describe("PaymentChip", () => {
-  it("shows the paid intent (price lives on offers, not the request)", () => {
-    render(<PaymentChip paymentType="paid" />);
-    expect(screen.getByText("בתשלום")).toBeDefined();
-  });
-
-  it("shows volunteer intent", () => {
-    render(<PaymentChip paymentType="volunteer" />);
-    expect(screen.getByText("בהתנדבות")).toBeDefined();
   });
 });
 
