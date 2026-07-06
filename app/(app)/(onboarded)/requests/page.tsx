@@ -10,8 +10,11 @@ import { S } from "@/lib/strings";
 const FEED_CAP = 200; // architecture §8.1: bounded fetch, in-memory distance sort
 const PAGE_SIZE = 12;
 
+const DISTANCE_OPTIONS = [5, 10, 25, 50]; // km — range filter chips
+
 type SearchParams = Promise<{
   category?: string;
+  dist?: string;
   page?: string;
 }>;
 
@@ -20,8 +23,10 @@ export default async function RequestsFeedPage({
 }: {
   searchParams: SearchParams;
 }) {
-  const { category, page } = await searchParams;
+  const { category, dist, page } = await searchParams;
   const pageNum = Math.max(1, Number(page) || 1);
+  const distKm =
+    dist && DISTANCE_OPTIONS.includes(Number(dist)) ? Number(dist) : null;
 
   const supabase = await createClient();
   const {
@@ -52,11 +57,18 @@ export default async function RequestsFeedPage({
   const viewer = priv && priv.lat != null ? { lat: priv.lat, lng: priv.lng! } : null;
 
   // Distance sort on the server: raw coordinates never reach the browser.
-  const withDistance = (requests ?? []).map((r) => ({
+  let withDistance = (requests ?? []).map((r) => ({
     ...r,
     distanceKm: viewer ? haversineKm(viewer.lat, viewer.lng, r.lat, r.lng) : null,
   }));
   if (viewer) withDistance.sort((a, b) => a.distanceKm! - b.distanceKm!);
+
+  // Distance filter (only meaningful with a viewer location): keep requests
+  // within the selected radius. Applied before paging AND before the map pins,
+  // so list and map stay in sync.
+  if (viewer && distKm != null) {
+    withDistance = withDistance.filter((r) => r.distanceKm! <= distKm);
+  }
 
   const totalPages = Math.max(1, Math.ceil(withDistance.length / PAGE_SIZE));
   const pageItems = withDistance.slice(
@@ -102,7 +114,7 @@ export default async function RequestsFeedPage({
 
   const params = (overrides: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
-    const merged = { category, ...overrides };
+    const merged = { category, dist, ...overrides };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
     const qs = sp.toString();
     return qs ? `?${qs}` : "";
@@ -145,11 +157,49 @@ export default async function RequestsFeedPage({
         ))}
       </div>
 
-      {/* Map overview of all matching requests (collapsible) */}
+      {/* Distance filter — range chips. Disabled without a viewer location
+          (distance can't be computed); the hint links to the profile. */}
+      <div className="flex flex-wrap items-center gap-2 text-sm">
+        <span className="text-stone-500">{S.requests.distanceLabel}:</span>
+        {viewer ? (
+          <>
+            <Link
+              href={`/requests${params({ dist: undefined, page: undefined })}`}
+              className={`chip ${!distKm ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+            >
+              {S.requests.distanceAll}
+            </Link>
+            {DISTANCE_OPTIONS.map((km) => (
+              <Link
+                key={km}
+                href={`/requests${params({ dist: String(km), page: undefined })}`}
+                className={`chip ${distKm === km ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+              >
+                {S.requests.distanceKm(km)}
+              </Link>
+            ))}
+          </>
+        ) : (
+          <span className="text-xs text-stone-400">
+            {S.requests.distanceNeedsLocation}{" "}
+            <Link href="/profile" className="underline">
+              {S.nav.profile}
+            </Link>
+          </span>
+        )}
+      </div>
+
+      {/* Map overview of all matching requests (open by default) */}
       <FeedMap pins={pins} />
 
       {!pageItems.length ? (
-        <EmptyState message={S.requests.noOpenRequests} />
+        <EmptyState
+          message={
+            viewer && distKm != null
+              ? S.requests.noRequestsInRange
+              : S.requests.noOpenRequests
+          }
+        />
       ) : (
         <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           {pageItems.map((r) => (

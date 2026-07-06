@@ -11,9 +11,9 @@ const RequestsMap = dynamic(
   { ssr: false }
 );
 
-/** Collapsible map overview of all open requests, above the feed cards. */
+/** Map overview of all open requests, above the feed cards — open by default. */
 export function FeedMap({ pins }: { pins: MapPin[] }) {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState(true);
   if (!pins.length) return null;
 
   return (
