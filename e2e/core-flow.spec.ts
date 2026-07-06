@@ -56,6 +56,8 @@ test("core marketplace loop through the UI", async ({ browser }) => {
 
   await helper.goto(requestUrl);
   await helper.getByLabel("איך אעזור").fill("מתקין מערכות שנים — אשמח לעזור.");
+  // pick the "fixed price" stance, then quote
+  await helper.getByRole("radio", { name: "מחיר קבוע" }).check();
   await helper.getByLabel("המחיר שלי (₪)").fill("120");
   await helper.getByRole("button", { name: "שליחת הצעה" }).click();
   await expect(helper.getByText("ההצעה שלך")).toBeVisible();

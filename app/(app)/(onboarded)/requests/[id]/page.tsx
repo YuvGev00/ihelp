@@ -9,6 +9,8 @@ import {
   Badge,
   Stars,
   EmptyState,
+  OfferPriceChip,
+  offerPriceText,
   formatDate,
 } from "@/components/ui";
 import { OfferForm } from "@/components/OfferForm";
@@ -19,6 +21,7 @@ import {
   ConfirmCompletionButton,
   MarkPaidButton,
   RatingForm,
+  SetFinalPriceForm,
 } from "@/components/LifecycleActions";
 import { S } from "@/lib/strings";
 
@@ -58,7 +61,7 @@ export default async function RequestDetailPage({
       // Sealed bids: RLS returns all offers to the owner, own offer to a helper.
       supabase
         .from("offers")
-        .select("id, helper_id, status, message, price, created_at")
+        .select("id, helper_id, status, message, pricing_mode, price, final_price, created_at")
         .eq("request_id", id)
         .order("created_at"),
       supabase
@@ -200,12 +203,7 @@ export default async function RequestDetailPage({
           )}
           {selectedOffer && (
             <p className="mt-2 text-sm text-stone-700">
-              {S.lifecycle.agreedPrice}:{" "}
-              <b>
-                {selectedOffer.price != null
-                  ? `₪${selectedOffer.price}`
-                  : S.offers.freeOffer}
-              </b>
+              {S.lifecycle.agreedPrice}: <b>{offerPriceText(selectedOffer)}</b>
             </p>
           )}
         </section>
@@ -244,15 +242,31 @@ export default async function RequestDetailPage({
         </section>
       )}
 
-      {/* Post-completion: rating (owner) + paid marker */}
+      {/* Post-completion: after-job pricing, rating (owner), paid marker */}
       {isParty && ["completed", "rated"].includes(request.status) && (
         <section className="space-y-4">
           <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
             {S.lifecycle.completedBoth}
           </p>
-          {isOwner && selectedOffer?.price != null && !request.is_paid && (
-            <MarkPaidButton requestId={id} />
-          )}
+          {/* after_job: the helper prices now; the requester waits */}
+          {(() => {
+            const pendingFinal =
+              selectedOffer?.pricing_mode === "after_job" &&
+              selectedOffer.final_price == null;
+            if (!pendingFinal) return null;
+            return isSelectedHelper ? (
+              <SetFinalPriceForm requestId={id} />
+            ) : (
+              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+                {S.offers.awaitingFinalPrice}
+              </p>
+            );
+          })()}
+          {/* mark paid unlocks once an agreed amount exists (fixed or final) */}
+          {isOwner &&
+            selectedOffer &&
+            (selectedOffer.price != null || selectedOffer.final_price != null) &&
+            !request.is_paid && <MarkPaidButton requestId={id} />}
           {isOwner && request.status === "completed" && <RatingForm requestId={id} />}
           {rating && (
             <div className="card">
@@ -300,11 +314,7 @@ export default async function RequestDetailPage({
                         count={agg?.count ?? 0}
                       />
                       <span className="ms-auto flex items-center gap-1.5">
-                        <span
-                          className={`chip ${o.price != null ? "bg-amber-100 text-amber-800" : "bg-teal-100 text-teal-800"}`}
-                        >
-                          {o.price != null ? `₪${o.price}` : S.offers.freeOffer}
-                        </span>
+                        <OfferPriceChip offer={o} />
                         <span className="chip bg-stone-100 text-stone-600">
                           {S.offers.status[o.status]}
                         </span>
@@ -330,6 +340,7 @@ export default async function RequestDetailPage({
                   id: myOffer.id,
                   message: myOffer.message,
                   price: myOffer.price,
+                  pricingMode: myOffer.pricing_mode,
                 }
               : undefined
           }

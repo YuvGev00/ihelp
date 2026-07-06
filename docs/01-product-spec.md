@@ -58,8 +58,11 @@ iHelp inverts the marketplace:
 - A **requester** publishes a help request: title, description, category, one or
   more photos, location, and whether it is **paid** or **volunteer** — an
   *intent*, not a price. **The price is dictated by the helpers**: each offer
-  carries the helper's price, or none at all (offering to help for free —
-  allowed even on paid requests).
+  declares one of three stances: a **fixed price** now, **volunteering** (free),
+  or **"price decided after the job"** — because many jobs (a plumber, an
+  electrician) can't be quoted before the helper sees the problem. In the
+  after-the-job stance the helper enters the final amount once the work is done.
+  Volunteering is allowed even on a paid request.
 - **Verified helpers** browse open requests — sorted by distance from them — and
   submit offers describing how they would help and at what price — or for free.
 - The requester compares offers (helper profile, verification badge, average
@@ -357,7 +360,9 @@ verification flow of §8.2.
 
 1. A verified helper browses open requests (distance-sorted), opens one, and
    submits an offer: a message and — on paid requests — their price, or no
-   price at all (volunteering; helpers compete on price as well as trust).
+   price at all (volunteering), or defer pricing until the job is done — the
+   final amount is then entered by the helper after both sides confirm
+   completion. Helpers compete on price as well as trust.
    The request's status becomes **has_offers** on the first active offer.
 2. The requester reviews offers side by side — each shows the helper's name,
    badge, average rating, and message — and **selects one**. Atomically: the

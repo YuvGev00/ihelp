@@ -8,6 +8,7 @@ import {
   markPaid,
 } from "@/actions/requests";
 import { submitRating } from "@/actions/ratings";
+import { setFinalPrice } from "@/actions/offers";
 import { StarsInput } from "@/components/OfferForm";
 import { S } from "@/lib/strings";
 
@@ -85,6 +86,45 @@ export function MarkPaidButton({ requestId }: { requestId: string }) {
       </button>
       {error && <span className="field-error block">{error}</span>}
     </span>
+  );
+}
+
+/** The selected helper of an after_job offer sets the final amount, shown once
+ *  the request is completed and no final price has been set yet. */
+export function SetFinalPriceForm({ requestId }: { requestId: string }) {
+  const boundAction = setFinalPrice.bind(null, requestId);
+  const [state, formAction, pending] = useActionState(boundAction, null);
+
+  return (
+    <form action={formAction} className="card space-y-3">
+      <h2 className="font-semibold">{S.offers.setFinalPriceTitle}</h2>
+      <p className="text-sm text-stone-600">{S.offers.setFinalPriceHint}</p>
+      <div>
+        <label htmlFor="finalPrice" className="field-label">
+          {S.offers.price}
+        </label>
+        <input
+          id="finalPrice"
+          name="price"
+          type="number"
+          min="1"
+          max="99999.99"
+          step="0.01"
+          dir="ltr"
+          required
+          className="field-input"
+        />
+        {state && !state.ok && state.fieldErrors?.price && (
+          <p className="field-error">{state.fieldErrors.price}</p>
+        )}
+      </div>
+      {state && !state.ok && state.formError && (
+        <p className="field-error">{state.formError}</p>
+      )}
+      <button type="submit" disabled={pending} className="btn-primary">
+        {pending ? S.common.loading : S.offers.setFinalPriceSubmit}
+      </button>
+    </form>
   );
 }
 

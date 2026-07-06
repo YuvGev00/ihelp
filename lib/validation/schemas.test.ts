@@ -66,26 +66,43 @@ describe("requestSchema — invalid inputs (assignment §3.4)", () => {
   });
 });
 
-describe("offerSchema — the helper dictates the price", () => {
-  it("accepts a priced offer and a volunteer (no-price) offer", () => {
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "150" }).success).toBe(true);
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: undefined }).success).toBe(true);
+describe("offerSchema — the three pricing stances", () => {
+  it("fixed requires a price; volunteer and after_job forbid one", () => {
+    expect(
+      offerSchema.safeParse({ message: "אשמח לעזור", pricingMode: "fixed", price: "150" }).success
+    ).toBe(true);
+    expect(
+      offerSchema.safeParse({ message: "אשמח לעזור", pricingMode: "volunteer", price: undefined }).success
+    ).toBe(true);
+    expect(
+      offerSchema.safeParse({ message: "אתמחר בסוף", pricingMode: "after_job", price: undefined }).success
+    ).toBe(true);
   });
 
-  it("rejects prices out of bounds", () => {
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "0" }).success).toBe(false);
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "-5" }).success).toBe(false);
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: "100000" }).success).toBe(false);
+  it("rejects the mismatches: fixed-without-price and non-fixed-with-price", () => {
+    expect(
+      offerSchema.safeParse({ message: "אשמח לעזור", pricingMode: "fixed", price: undefined }).success
+    ).toBe(false);
+    expect(
+      offerSchema.safeParse({ message: "אשמח לעזור", pricingMode: "volunteer", price: "50" }).success
+    ).toBe(false);
+    expect(
+      offerSchema.safeParse({ message: "אשמח לעזור", pricingMode: "after_job", price: "50" }).success
+    ).toBe(false);
   });
 
-  it("REGRESSION (FormData-null class): the action normalizes absent price to undefined", () => {
-    // raw null must be normalized by the action before parsing
-    expect(offerSchema.safeParse({ message: "אשמח לעזור", price: null }).success).toBe(false);
+  it("rejects fixed prices out of bounds", () => {
+    const base = { message: "אשמח לעזור", pricingMode: "fixed" as const };
+    expect(offerSchema.safeParse({ ...base, price: "0" }).success).toBe(false);
+    expect(offerSchema.safeParse({ ...base, price: "-5" }).success).toBe(false);
+    expect(offerSchema.safeParse({ ...base, price: "100000" }).success).toBe(false);
   });
 
   it("rejects too-short and too-long messages", () => {
-    expect(offerSchema.safeParse({ message: "היי" }).success).toBe(false);
-    expect(offerSchema.safeParse({ message: "א".repeat(1001) }).success).toBe(false);
+    expect(offerSchema.safeParse({ message: "היי", pricingMode: "volunteer" }).success).toBe(false);
+    expect(
+      offerSchema.safeParse({ message: "א".repeat(1001), pricingMode: "volunteer" }).success
+    ).toBe(false);
   });
 });
 

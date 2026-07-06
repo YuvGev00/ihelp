@@ -324,13 +324,15 @@ async function main() {
     request_id: offersReq,
     helper_id: ids.yossi,
     message: "חשמלאי מוסמך, יכול להגיע מחר בבוקר עם ציוד בדיקה.",
+    pricing_mode: "fixed",
     price: 280,
   });
   await offer({
     request_id: offersReq,
     helper_id: ids.amir,
     message: "מתעסק בתיקוני בית, אשמח לנסות לעזור.",
-    price: 200,
+    pricing_mode: "after_job",
+    price: null,
   });
   // withdrawn offer example
   const withdrawn = await offer({
@@ -364,6 +366,7 @@ async function main() {
     request_id: completedReq,
     helper_id: ids.yossi,
     message: "יש לי טנדר ורצועות, נסגור את זה בשעה.",
+    pricing_mode: "fixed",
     price: 120,
   });
   await db.from("offers").update({ status: "selected" }).eq("id", selCompleted);
@@ -381,6 +384,7 @@ async function main() {
     request_id: ratedReq,
     helper_id: ids.yossi,
     message: "מתקין מחשבים שנים, כולל אחריות לשבוע :)",
+    pricing_mode: "fixed",
     price: 100,
   });
   await db.from("offers").update({ status: "selected" }).eq("id", selRated);
@@ -417,6 +421,7 @@ async function main() {
     request_id: ratedReq2,
     helper_id: ids.yossi,
     message: "מגיע עם שקע חדש, עבודה של חצי שעה.",
+    pricing_mode: "fixed",
     price: 150,
   });
   await db.from("offers").update({ status: "selected" }).eq("id", selRated2);

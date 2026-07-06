@@ -56,7 +56,7 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
     // F2: two offers; trigger flips open → has_offers
     const { data: offerA, error: offerAErr } = await helperA.client
       .from("offers")
-      .insert({ request_id: requestId, helper_id: helperA.id, message: "אשמח לעזור מחר", price: 100 })
+      .insert({ request_id: requestId, helper_id: helperA.id, message: "אשמח לעזור מחר", pricing_mode: "fixed", price: 100 })
       .select("id")
       .single();
     expect(offerAErr).toBeNull();
@@ -276,5 +276,87 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
       p_note: "פרטים חסרים",
     });
     expect(withNote).toBeNull();
+  }, 30_000);
+
+  it("F8: after_job offer — helper sets the final price post-completion", async () => {
+    const requestId = await createRequestFixture(requester); // paid request
+    // helper offers with price decided after the job
+    const { data: offer, error: offerErr } = await helperA.client
+      .from("offers")
+      .insert({
+        request_id: requestId,
+        helper_id: helperA.id,
+        message: "אתמחר אחרי שאראה את הבעיה",
+        pricing_mode: "after_job",
+      })
+      .select("id")
+      .single();
+    expect(offerErr).toBeNull();
+
+    await requester.client.rpc("assign_offer", {
+      p_request_id: requestId,
+      p_offer_id: offer!.id,
+    });
+    // dual completion
+    await requester.client.rpc("confirm_completion", { p_request_id: requestId });
+    await helperA.client.rpc("confirm_completion", { p_request_id: requestId });
+
+    // requester cannot mark paid yet — no agreed amount exists
+    const { error: earlyPaid } = await requester.client.rpc("mark_paid", {
+      p_request_id: requestId,
+    });
+    expect(earlyPaid?.message).toContain("invalid_state");
+
+    // only the selected helper can set the final price
+    const { error: strangerPrice } = await helperB.client.rpc("set_final_price", {
+      p_request_id: requestId,
+      p_price: 999,
+    });
+    expect(strangerPrice?.message).toContain("not_found");
+
+    const { error: setErr } = await helperA.client.rpc("set_final_price", {
+      p_request_id: requestId,
+      p_price: 275,
+    });
+    expect(setErr).toBeNull();
+
+    const { data: priced } = await requester.client
+      .from("offers")
+      .select("final_price")
+      .eq("id", offer!.id)
+      .single();
+    expect(Number(priced?.final_price)).toBe(275);
+
+    // now the requester can mark paid; setting the price twice is blocked
+    const { error: paid } = await requester.client.rpc("mark_paid", {
+      p_request_id: requestId,
+    });
+    expect(paid).toBeNull();
+    const { error: twice } = await helperA.client.rpc("set_final_price", {
+      p_request_id: requestId,
+      p_price: 300,
+    });
+    expect(twice?.message).toContain("invalid_state");
+  }, 60_000);
+
+  it("D9: pricing_mode ⇔ price coupling is CHECK-enforced", async () => {
+    const requestId = await createRequestFixture(requester);
+    // fixed without a price → CHECK violation
+    const fixedNoPrice = await helperA.client.from("offers").insert({
+      request_id: requestId,
+      helper_id: helperA.id,
+      message: "מחיר קבוע בלי סכום",
+      pricing_mode: "fixed",
+    });
+    expect(fixedNoPrice.error).not.toBeNull();
+    // volunteer WITH a price → CHECK violation
+    const volWithPrice = await helperB.client.from("offers").insert({
+      request_id: requestId,
+      helper_id: helperB.id,
+      message: "התנדבות עם מחיר",
+      pricing_mode: "volunteer",
+      price: 50,
+    });
+    expect(volWithPrice.error).not.toBeNull();
   }, 30_000);
 });

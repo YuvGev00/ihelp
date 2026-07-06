@@ -4,6 +4,8 @@ import { useActionState, useState, useTransition } from "react";
 import { createOffer, updateOffer, withdrawOffer } from "@/actions/offers";
 import { S } from "@/lib/strings";
 
+type PricingMode = "fixed" | "volunteer" | "after_job";
+
 export function OfferForm({
   requestId,
   isPaid,
@@ -11,12 +13,32 @@ export function OfferForm({
 }: {
   requestId: string;
   isPaid: boolean;
-  existing?: { id: string; message: string; price: number | null };
+  existing?: {
+    id: string;
+    message: string;
+    price: number | null;
+    pricingMode: PricingMode;
+  };
 }) {
   const action = existing
     ? updateOffer.bind(null, existing.id, requestId)
     : createOffer.bind(null, requestId);
   const [state, formAction, pending] = useActionState(action, null);
+  // pricing_mode is immutable once set; on edit it is shown read-only.
+  const [mode, setMode] = useState<PricingMode>(
+    existing?.pricingMode ?? (isPaid ? "fixed" : "volunteer")
+  );
+
+  // On a volunteer request the only valid stance is volunteering.
+  const modeOptions: PricingMode[] = isPaid
+    ? ["fixed", "after_job", "volunteer"]
+    : ["volunteer"];
+
+  const modeLabel: Record<PricingMode, string> = {
+    fixed: S.offers.modeFixed,
+    volunteer: S.offers.modeVolunteer,
+    after_job: S.offers.modeAfterJob,
+  };
 
   return (
     <form action={formAction} className="card space-y-3">
@@ -41,7 +63,39 @@ export function OfferForm({
           <p className="field-error">{state.fieldErrors.message}</p>
         )}
       </div>
+
       {isPaid && (
+        <fieldset>
+          <legend className="field-label">{S.offers.pricingLabel}</legend>
+          {existing ? (
+            // pricing_mode cannot change after the offer exists (column guard)
+            <input type="hidden" name="pricingMode" value={mode} />
+          ) : null}
+          <div className="space-y-1.5">
+            {modeOptions.map((m) => (
+              <label key={m} className="flex items-center gap-2 text-sm">
+                <input
+                  type="radio"
+                  name={existing ? undefined : "pricingMode"}
+                  value={m}
+                  checked={mode === m}
+                  disabled={!!existing}
+                  onChange={() => setMode(m)}
+                />
+                {modeLabel[m]}
+              </label>
+            ))}
+          </div>
+          {mode === "after_job" && (
+            <p className="mt-1 text-xs text-stone-500">
+              {S.offers.modeAfterJobHint}
+            </p>
+          )}
+        </fieldset>
+      )}
+      {!isPaid && <input type="hidden" name="pricingMode" value="volunteer" />}
+
+      {mode === "fixed" && (
         <div>
           <label htmlFor="price" className="field-label">
             {S.offers.price}
@@ -54,15 +108,16 @@ export function OfferForm({
             max="99999.99"
             step="0.01"
             dir="ltr"
+            required
             defaultValue={existing?.price ?? ""}
             className="field-input"
           />
-          <p className="mt-1 text-xs text-stone-500">{S.offers.priceHint}</p>
           {state && !state.ok && state.fieldErrors?.price && (
             <p className="field-error">{state.fieldErrors.price}</p>
           )}
         </div>
       )}
+
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}

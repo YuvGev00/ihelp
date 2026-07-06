@@ -123,13 +123,24 @@ create table public.offers (
   helper_id      uuid not null references public.profiles(id) on delete cascade,
   status         public.offer_status not null default 'active',
   message        text not null check (char_length(message) between 5 and 1000),
-  -- the helper's price; NULL = volunteering (allowed even on paid requests —
-  -- generosity is legal). Price on a VOLUNTEER request is denied by the
-  -- offers policies (cross-table rule; a CHECK cannot join).
+  -- three pricing stances (migration 0010): a helper often cannot quote before
+  -- seeing the problem. pricing_mode:
+  --   'fixed'     → price set now (price column)
+  --   'volunteer' → free (both price columns null)
+  --   'after_job' → priced once the work is done (final_price set later via the
+  --                 set_final_price RPC, when the request is completed)
+  pricing_mode   public.pricing_mode not null default 'volunteer',
   price          numeric(10,2) check (price is null or (price > 0 and price <= 99999.99)),
+  final_price    numeric(10,2) check (final_price is null or (final_price > 0 and final_price <= 99999.99)),
+  constraint price_matches_mode check (
+    (pricing_mode = 'fixed'     and price is not null) or
+    (pricing_mode = 'volunteer' and price is null and final_price is null) or
+    (pricing_mode = 'after_job' and price is null)
+  ),
+  -- charging (fixed OR after_job) is allowed only on paid requests; volunteering
+  -- anywhere. That is a cross-table rule, enforced in the offers policies (§2).
   -- snapshot set by trigger T4 at insert: /my/offers must render meaningfully
-  -- even after the offerer loses SELECT on the parent request (assigned to
-  -- someone else / cancelled / hidden — spec §9.2 later-state visibility)
+  -- even after the offerer loses SELECT on the parent request (spec §9.2)
   request_title  text not null default '',
   created_at     timestamptz not null default now()
 );
@@ -934,7 +945,8 @@ the same bounds for instant feedback. DB constraints (§1.2) are the last line:
 | `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; phone required here (`^0\d{8,9}$` — mirrored by the `identity_requires_phone` CHECK); doc_path optional |
 | `professionalApplicationSchema` | doc_path required (mirrored by the `professional_requires_doc` CHECK) |
 | `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; payment_type (intent only — no amount); lat/lng required (NOT NULL columns); photo paths 1–5 |
-| `offerSchema` | message 5–1000; price optional, 0 < price ≤ 99999.99 (empty = volunteering; priced offers on volunteer requests are policy-denied) |
+| `offerSchema` | message 5–1000; pricingMode ∈ {fixed, volunteer, after_job}; price required iff mode=fixed (0 < price ≤ 99999.99); charging modes on volunteer requests are policy-denied |
+| `finalPriceSchema` | 0 < price ≤ 99999.99 — the after_job final amount set post-completion by the selected helper |
 | `ratingSchema` | stars int 1–5; note ≤ 500 |
 | `reviewSchema` (admin) | note required on rejection, ≤ 500 |
 

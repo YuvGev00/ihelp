@@ -14,6 +14,7 @@ const RPC_ERRORS: Record<string, string> = {
   photo_not_uploaded: "העלאת התמונות נכשלה — נסו שוב",
   location_required: "יש לאשר מיקום לבקשה",
   note_required: "דחייה מחייבת נימוק",
+  invalid_price: "סכום לא תקין",
 };
 
 export const GENERIC_ERROR = "משהו השתבש, נסו שוב";

@@ -80,6 +80,32 @@ export function HiddenChip() {
   return <span className="chip bg-stone-800 text-white">{S.requests.hidden}</span>;
 }
 
+type OfferPricing = {
+  pricing_mode: "fixed" | "volunteer" | "after_job";
+  price: number | null;
+  final_price: number | null;
+};
+
+/** The human-readable price of an offer across the three stances. */
+export function offerPriceText(o: OfferPricing): string {
+  if (o.pricing_mode === "volunteer") return S.offers.freeOffer;
+  if (o.pricing_mode === "fixed") return `₪${o.price}`;
+  // after_job: final price if set, otherwise "to be determined"
+  return o.final_price != null ? `₪${o.final_price}` : S.offers.priceTBD;
+}
+
+/** Chip form of the above, colored by whether money is involved. */
+export function OfferPriceChip({ offer }: { offer: OfferPricing }) {
+  const isFree = offer.pricing_mode === "volunteer";
+  return (
+    <span
+      className={`chip ${isFree ? "bg-teal-100 text-teal-800" : "bg-amber-100 text-amber-800"}`}
+    >
+      {offerPriceText(offer)}
+    </span>
+  );
+}
+
 export function EmptyState({ message }: { message: string }) {
   return (
     <div className="card py-10 text-center text-stone-500">{message}</div>
