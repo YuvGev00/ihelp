@@ -1,6 +1,6 @@
 import { notFound } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { Badge, Stars, EmptyState, formatDate } from "@/components/ui";
+import { Badge, Stars, Avatar, EmptyState, formatDate } from "@/components/ui";
 import { S } from "@/lib/strings";
 
 /** Public helper profile: name, badges, rating aggregate + list (via the
@@ -16,7 +16,7 @@ export default async function HelperProfilePage({
   const [{ data: profile }, { data: ratings }] = await Promise.all([
     supabase
       .from("profiles")
-      .select("id, display_name, is_identity_verified, is_professional, created_at")
+      .select("id, display_name, avatar_path, is_identity_verified, is_professional, created_at")
       .eq("id", id)
       .single(),
     supabase
@@ -36,13 +36,18 @@ export default async function HelperProfilePage({
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div className="card">
-        <h1 className="text-2xl font-bold">{profile.display_name}</h1>
-        <div className="mt-2 flex flex-wrap items-center gap-2">
-          <Badge
-            verified={profile.is_identity_verified}
-            professional={profile.is_professional}
-          />
-          <Stars value={avg} count={count} />
+        <div className="flex items-center gap-4">
+          <Avatar name={profile.display_name} path={profile.avatar_path} size={64} />
+          <div className="space-y-2">
+            <h1 className="text-2xl font-bold">{profile.display_name}</h1>
+            <div className="flex flex-wrap items-center gap-2">
+              <Badge
+                verified={profile.is_identity_verified}
+                professional={profile.is_professional}
+              />
+              <Stars value={avg} count={count} />
+            </div>
+          </div>
         </div>
       </div>
 

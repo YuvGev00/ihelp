@@ -15,6 +15,8 @@ export const profileSchema = z.object({
     .regex(phoneRegex, "מספר טלפון לא תקין (למשל 0501234567)")
     .optional()
     .or(z.literal("")),
+  // storage path of an uploaded avatar; "" clears it, undefined leaves unchanged
+  avatarPath: z.string().optional(),
 });
 
 export const locationSchema = z.object({

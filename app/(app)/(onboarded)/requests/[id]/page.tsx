@@ -8,6 +8,7 @@ import {
   HiddenChip,
   Badge,
   Stars,
+  Avatar,
   EmptyState,
   OfferPriceChip,
   offerPriceText,
@@ -89,7 +90,7 @@ export default async function RequestDetailPage({
     ? await Promise.all([
         supabase
           .from("profiles")
-          .select("id, display_name, is_identity_verified, is_professional")
+          .select("id, display_name, avatar_path, is_identity_verified, is_professional")
           .in("id", helperIds),
         supabase.from("helper_ratings").select("helper_id, stars").in("helper_id", helperIds),
       ])
@@ -301,7 +302,14 @@ export default async function RequestDetailPage({
           );
           return (
         <section className="space-y-3">
-          <h2 className="text-lg font-semibold">{S.offers.sectionTitle}</h2>
+          <div className="flex items-center gap-2">
+            <h2 className="text-lg font-semibold">{S.offers.sectionTitle}</h2>
+            {liveOffers.length > 0 && (
+              <span className="chip bg-emerald-100 text-emerald-800">
+                {S.offers.offerCount(liveOffers.length)}
+              </span>
+            )}
+          </div>
           {!liveOffers.length ? (
             <EmptyState
               message={
@@ -319,6 +327,7 @@ export default async function RequestDetailPage({
                 return (
                   <li key={o.id} className="card space-y-2">
                     <div className="flex flex-wrap items-center gap-2">
+                      <Avatar name={hp?.display_name ?? "?"} path={hp?.avatar_path} size={36} />
                       <Link
                         href={`/helpers/${o.helper_id}`}
                         className="font-semibold hover:underline"

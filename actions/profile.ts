@@ -10,9 +10,12 @@ export async function updateProfile(
   _prev: ActionResult | null,
   formData: FormData
 ): Promise<ActionResult> {
+  const rawAvatar = formData.get("avatarPath");
   const parsed = profileSchema.safeParse({
     displayName: formData.get("displayName"),
     phone: formData.get("phone"),
+    // "" clears the avatar; absent leaves it unchanged (handled below)
+    avatarPath: rawAvatar === null ? undefined : String(rawAvatar),
   });
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
@@ -22,10 +25,19 @@ export async function updateProfile(
   } = await supabase.auth.getUser();
   if (!user) return { ok: false, formError: DENIED_ERROR };
 
+  // avatar_path lives on the public profile row; the storage upload policy
+  // already ensured the path is in the caller's own folder.
+  const profileUpdate: { display_name: string; avatar_path?: string | null } = {
+    display_name: parsed.data.displayName,
+  };
+  if (parsed.data.avatarPath !== undefined) {
+    profileUpdate.avatar_path = parsed.data.avatarPath || null;
+  }
+
   // Silent-denial pattern: USING-filtered updates return zero rows, not errors.
   const { data, error } = await supabase
     .from("profiles")
-    .update({ display_name: parsed.data.displayName })
+    .update(profileUpdate)
     .eq("id", user.id)
     .select();
   if (error || !data?.length) return { ok: false, formError: DENIED_ERROR };

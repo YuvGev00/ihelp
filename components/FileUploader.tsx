@@ -17,7 +17,7 @@ export function FileUploader({
   label,
   hint,
 }: {
-  bucket: "request-photos" | "verification-docs";
+  bucket: "request-photos" | "verification-docs" | "avatars";
   name: string; // hidden input name carrying uploaded path(s)
   maxFiles?: number;
   label: string;

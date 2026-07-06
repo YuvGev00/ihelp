@@ -166,6 +166,24 @@ async function main() {
     }).eq("user_id", ids[u.key]);
   }
 
+  // 2b. Avatars for a couple of helpers (optional feature — most stay blank
+  //     to exercise the initials fallback). Distinct gradients per user.
+  const AVATARS: Record<string, [[number, number, number], [number, number, number]]> = {
+    dana: [[236, 72, 153], [190, 24, 93]],
+    yossi: [[59, 130, 246], [30, 64, 175]],
+  };
+  for (const [key, colors] of Object.entries(AVATARS)) {
+    const path = `${ids[key]}/seed-avatar.png`;
+    must(
+      await db.storage.from("avatars").upload(path, gradientPng(colors[0], colors[1]), {
+        contentType: "image/png",
+        upsert: true,
+      }),
+      `avatar upload (${key})`
+    );
+    await db.from("profiles").update({ avatar_path: path }).eq("id", ids[key]);
+  }
+
   // 3. Approved identity applications (audit trail behind the flags)
   for (const u of USERS.filter((u) => u.verified)) {
     must(

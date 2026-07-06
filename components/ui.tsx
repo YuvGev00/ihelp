@@ -1,5 +1,47 @@
 import { S } from "@/lib/strings";
 
+/** The public URL of an avatar object (public bucket) — or null. */
+export function avatarUrl(path: string | null | undefined): string | null {
+  if (!path) return null;
+  const base = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  return `${base}/storage/v1/object/public/avatars/${path}`;
+}
+
+/** Round avatar with an initials fallback when no picture is set. */
+export function Avatar({
+  name,
+  path,
+  size = 40,
+}: {
+  name: string;
+  path?: string | null;
+  size?: number;
+}) {
+  const url = avatarUrl(path);
+  const initial = (name?.trim()?.[0] ?? "?").toUpperCase();
+  const dim = { width: size, height: size };
+  if (url) {
+    return (
+      // eslint-disable-next-line @next/next/no-img-element
+      <img
+        src={url}
+        alt={name}
+        style={dim}
+        className="shrink-0 rounded-full object-cover"
+      />
+    );
+  }
+  return (
+    <span
+      style={dim}
+      aria-hidden
+      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-800"
+    >
+      {initial}
+    </span>
+  );
+}
+
 /** Verification badges shown wherever a helper appears (trust signals). */
 export function Badge({
   verified,

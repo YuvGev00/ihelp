@@ -54,6 +54,10 @@ export const S = {
   profile: {
     title: "הפרופיל שלי",
     displayName: "שם תצוגה",
+    avatar: "תמונת פרופיל",
+    avatarHint: "רשות — מוצגת ליד ההצעות שלך ובפרופיל",
+    avatarChange: "העלאת תמונה",
+    avatarRemove: "הסרת תמונה",
     phone: "טלפון",
     phoneNote: "הטלפון נחשף רק לצד השני לאחר שיבוץ לבקשה משותפת",
     location: "מיקום",
@@ -63,6 +67,7 @@ export const S = {
     locationDenied: "הרשאת מיקום נדחתה — אפשר להמשיך בלי מיון לפי מרחק",
     save: "שמירה",
     saved: "נשמר בהצלחה",
+    myRating: "הדירוג שלי כעוזר",
     onboardingHint: "כמעט סיימנו — נשאר רק לבחור שם תצוגה",
   },
 
@@ -139,6 +144,7 @@ export const S = {
 
   offers: {
     sectionTitle: "הצעות",
+    offerCount: (n: number) => (n === 1 ? "הצעה אחת" : `${n} הצעות`),
     myOffersTitle: "ההצעות שלי",
     noOffersYet: "עוד אין הצעות — עוזרים באזור יראו את הבקשה בקרוב",
     noOffersFinal: "לא התקבלו הצעות",
