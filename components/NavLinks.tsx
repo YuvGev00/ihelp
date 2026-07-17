@@ -21,8 +21,8 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
 
   const cls = (href: string) =>
     isActive(href)
-      ? "font-semibold text-emerald-700 underline underline-offset-4 decoration-2"
-      : "text-stone-600 hover:text-emerald-700";
+      ? "font-semibold text-brand underline underline-offset-4 decoration-2"
+      : "text-body hover:text-brand";
 
   return (
     <>

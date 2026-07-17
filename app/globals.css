@@ -1,40 +1,85 @@
 @import "tailwindcss";
 
+/*
+ * iHelp design tokens (redesign 2026-07 — "trust-forward clean").
+ * Refined pine green + crisp white, verification as the hero.
+ * Palette is exposed to Tailwind via @theme so utilities like bg-brand,
+ * text-ink, border-line generate automatically.
+ */
 @theme {
-  --font-sans: var(--font-heebo), system-ui, sans-serif;
+  --font-sans: var(--font-assistant), system-ui, sans-serif;
+
+  /* Greens */
+  --color-pine: #06432f; /* deepest — hero gradient end, strong text */
+  --color-brand: #0d7a5f; /* primary brand green — buttons, links, active */
+  --color-brand-600: #0b6b53;
+  --color-mint: #eafaf4; /* light tint — chip/tile backgrounds */
+  --color-mint-border: #bfe9d7;
+
+  /* Neutrals */
+  --color-canvas: #f7faf9; /* app background */
+  --color-ink: #0f1f1a; /* primary text (near-black green) */
+  --color-body: #54635d; /* body copy */
+  --color-muted: #8a978f; /* secondary/meta text */
+  --color-line: #e9edeb; /* card borders */
+  --color-field: #dde3e0; /* input borders */
+
+  /* Accents */
+  --color-star: #f0a020; /* rating stars */
+  --color-pro: #2563cc; /* professional badge */
+  --color-pro-bg: #eef4ff;
+  --color-price: #c07a10; /* paid price */
+  --color-price-bg: #fff5e6;
+
+  /* Elevation */
+  --shadow-card: 0 8px 20px -16px rgba(6, 67, 47, 0.55);
+  --shadow-btn: 0 14px 26px -10px rgba(13, 122, 95, 0.6);
+  --shadow-raise: 0 16px 30px -20px rgba(13, 122, 95, 0.8);
 }
 
-/* Small shared form vocabulary — the UI is small enough to own (arch §3). */
+/* Apply the Assistant family app-wide via the variable next/font injects on
+   <body>. Done in base (not relying on the font-sans utility) so it always
+   wins regardless of utility emission. */
+@layer base {
+  body {
+    font-family: var(--font-assistant), system-ui, sans-serif;
+  }
+}
+
+/* Small shared form/UI vocabulary — the UI is small enough to own (arch §3). */
 @layer components {
   .field-label {
-    @apply block text-sm font-medium text-stone-700 mb-1;
+    @apply block text-[13px] font-bold text-[#35433d] mb-1.5;
   }
   .field-input {
-    @apply w-full rounded-lg border border-stone-300 bg-white px-3 py-2 text-sm
-      focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500;
+    @apply w-full rounded-xl border border-field bg-white px-3.5 py-3 text-sm
+      text-ink placeholder:text-muted
+      focus:outline-none focus:ring-2 focus:ring-brand/40 focus:border-brand;
   }
   .field-error {
     @apply mt-1 text-sm text-red-600;
   }
   .btn-primary {
-    @apply inline-flex items-center justify-center rounded-lg bg-emerald-600 px-4 py-2
-      text-sm font-semibold text-white hover:bg-emerald-700 disabled:opacity-50
-      disabled:cursor-not-allowed transition-colors;
+    @apply inline-flex items-center justify-center rounded-xl bg-brand px-5 py-3
+      text-[15px] font-extrabold text-white hover:bg-brand-600
+      disabled:opacity-50 disabled:cursor-not-allowed transition-colors;
+    box-shadow: var(--shadow-btn);
   }
   .btn-secondary {
-    @apply inline-flex items-center justify-center rounded-lg border border-stone-300
-      bg-white px-4 py-2 text-sm font-semibold text-stone-700 hover:bg-stone-100
-      disabled:opacity-50 transition-colors;
+    @apply inline-flex items-center justify-center rounded-xl border-[1.5px]
+      border-[#d7ddda] bg-white px-5 py-3 text-[15px] font-extrabold text-ink
+      hover:bg-[#f2f5f4] disabled:opacity-50 transition-colors;
   }
   .btn-danger {
-    @apply inline-flex items-center justify-center rounded-lg border border-red-300
-      bg-white px-4 py-2 text-sm font-semibold text-red-700 hover:bg-red-50
+    @apply inline-flex items-center justify-center rounded-xl border border-red-300
+      bg-white px-5 py-3 text-[15px] font-bold text-red-700 hover:bg-red-50
       disabled:opacity-50 transition-colors;
   }
   .card {
-    @apply rounded-xl border border-stone-200 bg-white p-4 shadow-sm;
+    @apply rounded-2xl border border-line bg-white p-4;
+    box-shadow: var(--shadow-card);
   }
   .chip {
-    @apply inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium;
+    @apply inline-flex items-center rounded-lg px-2.5 py-1 text-xs font-bold;
   }
 }

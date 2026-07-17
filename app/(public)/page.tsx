@@ -5,70 +5,85 @@ export const dynamic = "force-static";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen">
-      {/* Hero — warm gradient, generous space, the reversal stated boldly */}
-      <section className="relative overflow-hidden">
+    <div className="min-h-screen bg-canvas">
+      {/* Hero — pine→brand gradient, the reversal stated boldly, verification
+          teased as the trust anchor. Decorative mint orbs add depth. */}
+      <section className="relative overflow-hidden bg-gradient-to-b from-pine to-brand text-white">
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-b from-emerald-50 via-stone-50 to-stone-50"
+          className="pointer-events-none absolute -top-20 -start-16 h-64 w-64 rounded-full bg-[#7fd6b6]/20 blur-2xl"
         />
         <div
           aria-hidden
-          className="pointer-events-none absolute -top-24 start-1/2 h-72 w-72 -translate-x-1/2 rounded-full bg-emerald-200/40 blur-3xl"
+          className="pointer-events-none absolute -bottom-24 -end-10 h-72 w-72 rounded-full bg-[#7fd6b6]/10 blur-3xl"
         />
-        <div className="relative mx-auto max-w-3xl px-6 pb-16 pt-24 text-center">
-          <span className="chip mb-6 bg-white/70 text-emerald-800 ring-1 ring-emerald-200">
-            RUNI · Internet Technologies 2026
-          </span>
-          <h1 className="text-6xl font-extrabold tracking-tight text-emerald-700">
-            {S.appName}
-          </h1>
-          <p className="mt-4 text-2xl font-semibold text-stone-800">
+        <div className="relative mx-auto max-w-3xl px-6 pb-20 pt-24 text-center">
+          {/* Wordmark */}
+          <div className="mb-8 inline-flex items-center gap-2">
+            <span className="flex h-9 w-9 items-center justify-center rounded-[11px] bg-white text-xl font-extrabold text-brand">
+              i
+            </span>
+            <span className="text-2xl font-extrabold tracking-tight">
+              {S.appName}
+            </span>
+          </div>
+          <h1 className="text-4xl font-extrabold leading-[1.15] tracking-tight sm:text-5xl">
             {S.tagline}
-          </p>
-          <p className="mx-auto mt-4 max-w-xl text-stone-600">
+          </h1>
+          <p className="mx-auto mt-5 max-w-xl text-base leading-relaxed text-[#c8ebdd] sm:text-lg">
             {S.landing.lead}
           </p>
-          <div className="mt-8 flex flex-wrap justify-center gap-3">
-            <Link href="/signup" className="btn-primary px-6 py-3 text-base">
+          <div className="mt-9 flex flex-col justify-center gap-3 sm:flex-row">
+            <Link
+              href="/signup"
+              className="rounded-xl bg-white px-6 py-3.5 text-base font-extrabold text-pine transition hover:bg-mint"
+            >
               {S.common.landingSignUp}
             </Link>
-            <Link href="/requests" className="btn-secondary px-6 py-3 text-base">
+            <Link
+              href="/requests"
+              className="rounded-xl border-[1.5px] border-white/40 px-6 py-3.5 text-base font-bold text-white transition hover:bg-white/10"
+            >
               {S.common.landingCta}
             </Link>
           </div>
         </div>
       </section>
 
-      {/* How it works — three numbered steps */}
-      <section className="mx-auto max-w-4xl px-6 py-14">
-        <h2 className="mb-8 text-center text-2xl font-bold text-stone-800">
+      {/* How it works — three numbered steps with mint index tiles */}
+      <section className="mx-auto max-w-4xl px-6 py-16">
+        <h2 className="mb-9 text-center text-2xl font-extrabold text-ink">
           {S.landing.howTitle}
         </h2>
         <ol className="grid gap-5 sm:grid-cols-3">
           {S.landing.steps.map((s) => (
-            <li key={s.n} className="card relative pt-8">
-              <span className="absolute -top-4 end-4 flex h-9 w-9 items-center justify-center rounded-full bg-emerald-600 text-lg font-bold text-white shadow-sm">
+            <li key={s.n} className="card">
+              <span className="mb-3 flex h-9 w-9 items-center justify-center rounded-[10px] bg-mint text-lg font-extrabold text-brand">
                 {s.n}
               </span>
-              <h3 className="font-bold text-stone-800">{s.title}</h3>
-              <p className="mt-1 text-sm text-stone-600">{s.body}</p>
+              <h3 className="font-bold text-ink">{s.title}</h3>
+              <p className="mt-1 text-sm leading-relaxed text-body">{s.body}</p>
             </li>
           ))}
         </ol>
       </section>
 
-      {/* Trust — the differentiators */}
+      {/* Trust — the differentiators, on a clean white band */}
       <section className="bg-white">
-        <div className="mx-auto max-w-4xl px-6 py-14">
-          <h2 className="mb-8 text-center text-2xl font-bold text-stone-800">
+        <div className="mx-auto max-w-4xl px-6 py-16">
+          <h2 className="mb-9 text-center text-2xl font-extrabold text-ink">
             {S.landing.trustTitle}
           </h2>
-          <div className="grid gap-5 sm:grid-cols-3">
+          <div className="grid gap-6 sm:grid-cols-3">
             {S.landing.trust.map((t) => (
-              <div key={t.title} className="text-center">
-                <h3 className="font-bold text-emerald-700">{t.title}</h3>
-                <p className="mt-1 text-sm text-stone-600">{t.body}</p>
+              <div
+                key={t.title}
+                className="rounded-2xl border border-mint-border bg-mint p-5 text-center"
+              >
+                <h3 className="font-extrabold text-pine">{t.title}</h3>
+                <p className="mt-1.5 text-sm leading-relaxed text-[#3f7d68]">
+                  {t.body}
+                </p>
               </div>
             ))}
           </div>
@@ -77,20 +92,20 @@ export default function LandingPage() {
 
       {/* Closing CTA */}
       <section className="mx-auto max-w-3xl px-6 py-16 text-center">
-        <h2 className="text-2xl font-bold text-stone-800">
+        <h2 className="text-2xl font-extrabold text-ink">
           {S.landing.ctaTitle}
         </h2>
-        <div className="mt-6 flex flex-wrap justify-center gap-3">
-          <Link href="/signup" className="btn-primary px-6 py-3 text-base">
+        <div className="mt-7 flex flex-col justify-center gap-3 sm:flex-row">
+          <Link href="/signup" className="btn-primary text-base">
             {S.common.landingSignUp}
           </Link>
-          <Link href="/login" className="btn-secondary px-6 py-3 text-base">
+          <Link href="/login" className="btn-secondary text-base">
             {S.nav.signIn}
           </Link>
         </div>
-        <p className="mt-8 text-sm text-stone-400">
+        <p className="mt-9 text-sm text-muted">
           {S.landing.emergencyNote} —{" "}
-          <Link href="/emergency" className="underline hover:text-stone-600">
+          <Link href="/emergency" className="text-brand underline hover:text-pine">
             {S.emergency.title}
           </Link>
         </p>
