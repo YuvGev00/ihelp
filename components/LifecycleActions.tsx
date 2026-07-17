@@ -97,8 +97,8 @@ export function SetFinalPriceForm({ requestId }: { requestId: string }) {
 
   return (
     <form action={formAction} className="card space-y-3">
-      <h2 className="font-semibold">{S.offers.setFinalPriceTitle}</h2>
-      <p className="text-sm text-stone-600">{S.offers.setFinalPriceHint}</p>
+      <h2 className="font-extrabold text-ink">{S.offers.setFinalPriceTitle}</h2>
+      <p className="text-sm text-body">{S.offers.setFinalPriceHint}</p>
       <div>
         <label htmlFor="finalPrice" className="field-label">
           {S.offers.price}
@@ -134,10 +134,12 @@ export function RatingForm({ requestId }: { requestId: string }) {
 
   return (
     <form action={formAction} className="card space-y-3">
-      <h2 className="font-semibold">{S.lifecycle.rateTitle}</h2>
-      <StarsInput name="stars" />
+      <h2 className="text-center font-extrabold text-ink">{S.lifecycle.rateTitle}</h2>
+      <div className="flex justify-center">
+        <StarsInput name="stars" />
+      </div>
       {state && !state.ok && state.fieldErrors?.stars && (
-        <p className="field-error">{state.fieldErrors.stars}</p>
+        <p className="text-center field-error">{state.fieldErrors.stars}</p>
       )}
       <div>
         <label htmlFor="note" className="field-label">
@@ -148,7 +150,7 @@ export function RatingForm({ requestId }: { requestId: string }) {
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}
-      <button type="submit" disabled={pending} className="btn-primary">
+      <button type="submit" disabled={pending} className="btn-primary w-full">
         {pending ? S.common.loading : S.lifecycle.rateSubmit}
       </button>
     </form>

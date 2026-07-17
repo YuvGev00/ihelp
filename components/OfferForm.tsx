@@ -37,8 +37,8 @@ export function OfferForm({
   };
 
   return (
-    <form action={formAction} className="card space-y-3">
-      <h2 className="font-semibold">
+    <form action={formAction} className="card space-y-4">
+      <h2 className="font-extrabold text-ink">
         {existing ? S.offers.yourOffer : S.offers.offerHelp}
       </h2>
       <div>
@@ -66,25 +66,36 @@ export function OfferForm({
           // pricing_mode cannot change after the offer exists (column guard)
           <input type="hidden" name="pricingMode" value={mode} />
         ) : null}
-        <div className="space-y-1.5">
-          {modeOptions.map((m) => (
-            <label key={m} className="flex items-center gap-2 text-sm">
-              <input
-                type="radio"
-                name={existing ? undefined : "pricingMode"}
-                value={m}
-                checked={mode === m}
-                disabled={!!existing}
-                onChange={() => setMode(m)}
-              />
-              {modeLabel[m]}
-            </label>
-          ))}
+        <div className="flex flex-wrap gap-2">
+          {modeOptions.map((m) => {
+            const on = mode === m;
+            return (
+              <label
+                key={m}
+                className={`chip cursor-pointer select-none ${
+                  existing ? "opacity-60" : ""
+                } ${
+                  on
+                    ? "bg-brand text-white"
+                    : "border border-line bg-white text-body hover:border-brand/40"
+                }`}
+              >
+                <input
+                  type="radio"
+                  name={existing ? undefined : "pricingMode"}
+                  value={m}
+                  checked={on}
+                  disabled={!!existing}
+                  onChange={() => setMode(m)}
+                  className="sr-only"
+                />
+                {modeLabel[m]}
+              </label>
+            );
+          })}
         </div>
         {mode === "after_job" && (
-          <p className="mt-1 text-xs text-stone-500">
-            {S.offers.modeAfterJobHint}
-          </p>
+          <p className="mt-2 text-xs text-muted">{S.offers.modeAfterJobHint}</p>
         )}
       </fieldset>
 
@@ -114,7 +125,7 @@ export function OfferForm({
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}
-      {state?.ok && <p className="text-sm text-emerald-700">{S.profile.saved}</p>}
+      {state?.ok && <p className="text-sm font-semibold text-brand">{S.profile.saved}</p>}
       <div className="flex gap-2">
         <button type="submit" disabled={pending} className="btn-primary">
           {pending
@@ -157,7 +168,7 @@ export function WithdrawButton({
 export function StarsInput({ name }: { name: string }) {
   const [value, setValue] = useState(0);
   return (
-    <div className="flex flex-row-reverse justify-end gap-1 text-3xl">
+    <div className="flex flex-row-reverse justify-center gap-2 text-4xl">
       {/* visually 1..5 in RTL */}
       {[5, 4, 3, 2, 1].map((n) => (
         <button
@@ -165,7 +176,7 @@ export function StarsInput({ name }: { name: string }) {
           type="button"
           onClick={() => setValue(n)}
           aria-label={`${n} ${S.lifecycle.stars}`}
-          className={n <= value ? "text-amber-500" : "text-stone-300"}
+          className={`transition ${n <= value ? "text-star" : "text-[#d9e0dd]"}`}
         >
           ★
         </button>

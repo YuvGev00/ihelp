@@ -11,7 +11,6 @@ import {
   Avatar,
   EmptyState,
   OfferPriceChip,
-  offerPriceText,
   formatDate,
 } from "@/components/ui";
 import { OfferForm } from "@/components/OfferForm";
@@ -123,6 +122,23 @@ export default async function RequestDetailPage({
       ? (await supabase.rpc("get_counterpart_contact", { p_request_id: id })).data?.[0]
       : null;
 
+  // Counterpart avatar for the contact card: the helper's if the viewer is the
+  // owner, else the requester's. Public profiles.avatar_path (RLS-readable).
+  const counterpartId = contact
+    ? isOwner
+      ? selectedOffer?.helper_id
+      : request.requester_id
+    : null;
+  const contactAvatarPath = counterpartId
+    ? (
+        await supabase
+          .from("profiles")
+          .select("avatar_path")
+          .eq("id", counterpartId)
+          .single()
+      ).data?.avatar_path ?? null
+    : null;
+
   const canOffer =
     !isOwner &&
     ["open", "has_offers"].includes(request.status) &&
@@ -141,18 +157,18 @@ export default async function RequestDetailPage({
           ) : (
             <PublicStatusChip status={request.status} />
           )}
-          <span className="chip bg-stone-100 text-stone-600">
+          <span className="chip bg-[#f2f5f4] text-body">
             {categoryLabel(request.category)}
           </span>
           {request.is_hidden && <HiddenChip />}
           {request.is_paid && (
-            <span className="chip bg-emerald-100 text-emerald-800">
+            <span className="chip bg-mint text-brand">
               {S.lifecycle.markedPaid}
             </span>
           )}
         </div>
-        <h1 className="text-2xl font-bold">{request.title}</h1>
-        <p className="text-xs text-stone-400">
+        <h1 className="text-2xl font-extrabold text-ink">{request.title}</h1>
+        <p className="text-xs text-muted">
           {S.requests.postedAt} {formatDate(request.created_at)}
         </p>
       </div>
@@ -164,7 +180,7 @@ export default async function RequestDetailPage({
             s.signedUrl ? (
               <div
                 key={s.path}
-                className="aspect-video h-48 shrink-0 overflow-hidden rounded-xl bg-stone-100"
+                className="aspect-video h-48 shrink-0 overflow-hidden rounded-2xl bg-[#e5efeb]"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
@@ -178,12 +194,14 @@ export default async function RequestDetailPage({
         </div>
       )}
 
-      <p className="whitespace-pre-wrap text-stone-700">{request.description}</p>
+      <p className="whitespace-pre-wrap leading-relaxed text-body">
+        {request.description}
+      </p>
 
       {/* Location — display-only OpenStreetMap; the distance chip elsewhere is
           the dependency-free source of truth, so the map is purely additive. */}
       <section>
-        <h2 className="mb-2 text-sm font-semibold text-stone-700">
+        <h2 className="mb-2 text-sm font-bold text-[#35433d]">
           {S.requests.mapTitle}
         </h2>
         <MapView lat={request.lat} lng={request.lng} />
@@ -206,19 +224,35 @@ export default async function RequestDetailPage({
 
       {/* Contact card — parties only, post-assignment (spec §8.4) */}
       {contact && (
-        <section className="card border-emerald-300 bg-emerald-50">
-          <h2 className="font-semibold">{S.lifecycle.contactTitle}</h2>
-          <p className="mb-2 text-xs text-stone-500">{S.lifecycle.contactExplainer}</p>
-          <p className="text-lg font-semibold">{contact.display_name}</p>
-          {contact.phone && (
-            <a href={`tel:${contact.phone}`} dir="ltr" className="text-lg text-emerald-700 underline">
-              {contact.phone}
-            </a>
-          )}
+        <section className="card border-mint-border bg-mint">
+          <h2 className="font-extrabold text-ink">{S.lifecycle.contactTitle}</h2>
+          <p className="mb-3 text-xs text-muted">{S.lifecycle.contactExplainer}</p>
+          <div className="flex items-center gap-3">
+            <Avatar
+              name={contact.display_name}
+              path={contactAvatarPath}
+              size={44}
+            />
+            <div className="flex-1">
+              <p className="font-bold text-ink">{contact.display_name}</p>
+              {contact.phone && (
+                <a
+                  href={`tel:${contact.phone}`}
+                  dir="ltr"
+                  className="block text-start text-brand font-bold"
+                >
+                  {contact.phone}
+                </a>
+              )}
+            </div>
+          </div>
           {selectedOffer && (
-            <p className="mt-2 text-sm text-stone-700">
-              {S.lifecycle.agreedPrice}: <b>{offerPriceText(selectedOffer)}</b>
-            </p>
+            <div className="mt-3 flex items-center justify-between border-t border-mint-border pt-3">
+              <span className="text-sm font-semibold text-[#3f7d68]">
+                {S.lifecycle.agreedPrice}
+              </span>
+              <OfferPriceChip offer={selectedOffer} />
+            </div>
           )}
         </section>
       )}
@@ -226,7 +260,7 @@ export default async function RequestDetailPage({
       {/* Completion panel — assigned, parties (spec §8.4 dual confirmation) */}
       {isParty && request.status === "assigned" && (
         <section className="card space-y-2">
-          <h2 className="font-semibold">{S.lifecycle.confirmCompletion}</h2>
+          <h2 className="font-extrabold text-ink">{S.lifecycle.confirmCompletion}</h2>
           {(() => {
             const mine = isOwner
               ? request.completed_by_requester
@@ -236,13 +270,13 @@ export default async function RequestDetailPage({
               : request.completed_by_requester;
             if (mine)
               return (
-                <p className="text-sm text-stone-600">
+                <p className="text-sm text-body">
                   {S.lifecycle.youConfirmed} — {S.lifecycle.waitingOther}
                 </p>
               );
             if (theirs)
               return (
-                <p className="text-sm font-medium text-emerald-700">
+                <p className="text-sm font-semibold text-brand">
                   {S.lifecycle.otherConfirmed}
                 </p>
               );
@@ -259,9 +293,14 @@ export default async function RequestDetailPage({
       {/* Post-completion: after-job pricing, rating (owner), paid marker */}
       {isParty && ["completed", "rated"].includes(request.status) && (
         <section className="space-y-4">
-          <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
-            {S.lifecycle.completedBoth}
-          </p>
+          <div className="flex items-center gap-3 rounded-2xl border border-mint-border bg-mint p-4">
+            <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-brand text-xl text-white">
+              ✓
+            </span>
+            <div>
+              <p className="font-extrabold text-pine">{S.lifecycle.completedBoth}</p>
+            </div>
+          </div>
           {/* after_job: the helper prices now; the requester waits */}
           {(() => {
             const pendingFinal =
@@ -271,7 +310,7 @@ export default async function RequestDetailPage({
             return isSelectedHelper ? (
               <SetFinalPriceForm requestId={id} />
             ) : (
-              <p className="rounded-lg border border-amber-200 bg-amber-50 p-3 text-sm text-amber-900">
+              <p className="rounded-2xl border border-[#f5e6bf] bg-[#fff8e6] p-3 text-sm text-[#a16207]">
                 {S.offers.awaitingFinalPrice}
               </p>
             );
@@ -284,9 +323,9 @@ export default async function RequestDetailPage({
           {isOwner && request.status === "completed" && <RatingForm requestId={id} />}
           {rating && (
             <div className="card">
-              <h2 className="mb-1 font-semibold">{S.lifecycle.rateTitle}</h2>
+              <h2 className="mb-1 font-extrabold text-ink">{S.lifecycle.rateTitle}</h2>
               <Stars value={rating.stars} />
-              {rating.note && <p className="mt-1 text-sm text-stone-600">{rating.note}</p>}
+              {rating.note && <p className="mt-1 text-sm text-body">{rating.note}</p>}
             </div>
           )}
         </section>
@@ -303,9 +342,9 @@ export default async function RequestDetailPage({
           return (
         <section className="space-y-3">
           <div className="flex items-center gap-2">
-            <h2 className="text-lg font-semibold">{S.offers.sectionTitle}</h2>
+            <h2 className="text-lg font-extrabold text-ink">{S.offers.sectionTitle}</h2>
             {liveOffers.length > 0 && (
-              <span className="chip bg-emerald-100 text-emerald-800">
+              <span className="rounded-full bg-mint px-2.5 py-0.5 text-xs font-bold text-brand">
                 {S.offers.offerCount(liveOffers.length)}
               </span>
             )}
@@ -324,32 +363,50 @@ export default async function RequestDetailPage({
               {liveOffers.map((o) => {
                 const hp = profileById.get(o.helper_id);
                 const agg = ratingAgg.get(o.helper_id);
+                // The selected offer stands out; while choosing, so does the
+                // first live offer (the redesign's "recommended" emphasis).
+                const highlight =
+                  o.status === "selected" ||
+                  (request.status === "has_offers" && o.id === liveOffers[0].id);
                 return (
-                  <li key={o.id} className="card space-y-2">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <Avatar name={hp?.display_name ?? "?"} path={hp?.avatar_path} size={36} />
-                      <Link
-                        href={`/helpers/${o.helper_id}`}
-                        className="font-semibold hover:underline"
-                      >
-                        {hp?.display_name}
-                      </Link>
+                  <li
+                    key={o.id}
+                    className={`rounded-2xl border bg-white p-4 space-y-3 ${
+                      highlight
+                        ? "border-2 border-brand shadow-[var(--shadow-raise)]"
+                        : "border-line shadow-[var(--shadow-card)]"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <Avatar name={hp?.display_name ?? "?"} path={hp?.avatar_path} size={44} />
+                      <div className="min-w-0 flex-1">
+                        <Link
+                          href={`/helpers/${o.helper_id}`}
+                          className="font-bold text-ink hover:underline"
+                        >
+                          {hp?.display_name}
+                        </Link>
+                        <div className="mt-0.5">
+                          <Stars
+                            value={agg ? agg.sum / agg.count : null}
+                            count={agg?.count ?? 0}
+                          />
+                        </div>
+                      </div>
+                      <OfferPriceChip offer={o} />
+                    </div>
+                    <div className="flex flex-wrap items-center gap-1.5">
                       <Badge
                         verified={hp?.is_identity_verified}
                         professional={hp?.is_professional}
                       />
-                      <Stars
-                        value={agg ? agg.sum / agg.count : null}
-                        count={agg?.count ?? 0}
-                      />
-                      <span className="ms-auto flex items-center gap-1.5">
-                        <OfferPriceChip offer={o} />
-                        <span className="chip bg-stone-100 text-stone-600">
-                          {S.offers.status[o.status]}
+                      {o.status === "selected" && (
+                        <span className="chip bg-mint text-brand">
+                          {S.offers.status.selected}
                         </span>
-                      </span>
+                      )}
                     </div>
-                    <p className="text-sm text-stone-700">{o.message}</p>
+                    <p className="text-sm leading-relaxed text-body">{o.message}</p>
                     {request.status === "has_offers" && o.status === "active" && (
                       <AssignButton requestId={id} offerId={o.id} />
                     )}
@@ -378,7 +435,7 @@ export default async function RequestDetailPage({
       ) : !isOwner && !profile?.is_identity_verified &&
         ["open", "has_offers"].includes(request.status) ? (
         <section className="card text-center">
-          <p className="mb-2 text-sm text-stone-600">{S.verification.gateMessage}</p>
+          <p className="mb-3 text-sm text-body">{S.verification.gateMessage}</p>
           <Link href="/verification" className="btn-primary">
             {S.nav.verification}
           </Link>
@@ -389,7 +446,7 @@ export default async function RequestDetailPage({
           withdrawn offer (the helper took it back; re-offering is available). */}
       {myOffer &&
         !["active", "withdrawn"].includes(myOffer.status) && (
-          <p className="text-sm text-stone-500">
+          <p className="text-sm text-muted">
             {S.offers.yourOffer}: {S.offers.status[myOffer.status]}
           </p>
         )}
