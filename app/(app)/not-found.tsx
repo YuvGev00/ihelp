@@ -5,8 +5,8 @@ import { S } from "@/lib/strings";
 export default function NotFound() {
   return (
     <div className="card mx-auto mt-10 max-w-md py-10 text-center">
-      <h1 className="mb-2 text-xl font-bold">{S.common.notFoundTitle}</h1>
-      <p className="mb-4 text-sm text-stone-600">{S.common.notFoundBody}</p>
+      <h1 className="mb-2 text-xl font-extrabold text-ink">{S.common.notFoundTitle}</h1>
+      <p className="mb-4 text-sm text-body">{S.common.notFoundBody}</p>
       <Link href="/requests" className="btn-primary">
         {S.nav.requests}
       </Link>

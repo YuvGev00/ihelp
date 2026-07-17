@@ -82,10 +82,10 @@ export default async function AdminPage() {
 
   return (
     <div className="space-y-10">
-      <h1 className="text-2xl font-bold">{S.admin.title}</h1>
+      <h1 className="text-2xl font-extrabold text-ink">{S.admin.title}</h1>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">{S.admin.queueTitle}</h2>
+        <h2 className="mb-3 text-lg font-extrabold text-ink">{S.admin.queueTitle}</h2>
         {!queue?.length ? (
           <EmptyState message={S.admin.queueEmpty} />
         ) : (
@@ -96,18 +96,18 @@ export default async function AdminPage() {
                   <span className="chip bg-purple-100 text-purple-800">
                     {S.admin.kind[app.kind]}
                   </span>
-                  <span className="font-semibold">{app.full_name}</span>
+                  <span className="font-bold text-ink">{app.full_name}</span>
                   {app.phone && (
-                    <span dir="ltr" className="text-sm text-stone-600">
+                    <span dir="ltr" className="text-sm text-body">
                       {app.phone}
                     </span>
                   )}
-                  <span className="ms-auto text-xs text-stone-400">
+                  <span className="ms-auto text-xs text-muted">
                     {formatDate(app.created_at)}
                   </span>
                 </div>
                 {app.self_description && (
-                  <p className="mt-2 text-sm text-stone-600">
+                  <p className="mt-2 text-sm text-body">
                     {app.self_description}
                   </p>
                 )}
@@ -116,14 +116,14 @@ export default async function AdminPage() {
                     href={signedByPath.get(app.doc_path) ?? "#"}
                     target="_blank"
                     rel="noreferrer"
-                    className="mt-2 inline-block text-sm font-semibold text-emerald-700 underline"
+                    className="mt-2 inline-block text-sm font-semibold text-brand underline"
                   >
                     {S.admin.viewDoc}
                   </a>
                 )}
                 {(historyByUser.get(app.user_id) ?? []).length > 0 && (
-                  <div className="mt-2 rounded-lg bg-stone-50 p-2 text-xs text-stone-600">
-                    <p className="font-semibold">{S.admin.historyTitle}</p>
+                  <div className="mt-2 rounded-xl bg-[#f7faf9] p-2 text-xs text-body">
+                    <p className="font-bold">{S.admin.historyTitle}</p>
                     <ul className="mt-1 space-y-0.5">
                       {historyByUser.get(app.user_id)!.map((h, i) => (
                         <li key={i}>
@@ -143,19 +143,19 @@ export default async function AdminPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">{S.admin.moderationTitle}</h2>
+        <h2 className="mb-3 text-lg font-extrabold text-ink">{S.admin.moderationTitle}</h2>
         <ul className="space-y-2">
           {(requests ?? []).map((r) => (
             <li key={r.id} className="card flex flex-wrap items-center gap-3">
               <StatusChip status={r.status} />
               {r.is_hidden && (
-                <span className="chip bg-stone-800 text-white">
+                <span className="chip bg-ink text-white">
                   {S.requests.hidden}
                 </span>
               )}
               <a
                 href={`/requests/${r.id}`}
-                className="font-medium hover:underline"
+                className="font-bold text-ink hover:underline"
               >
                 {r.title}
               </a>
@@ -168,13 +168,13 @@ export default async function AdminPage() {
       </section>
 
       <section>
-        <h2 className="mb-3 text-lg font-semibold">
+        <h2 className="mb-3 text-lg font-extrabold text-ink">
           {S.verification.verifiedIdentity}
         </h2>
         <ul className="space-y-2">
           {(verifiedUsers ?? []).map((u) => (
             <li key={u.id} className="card flex flex-wrap items-center gap-3">
-              <span className="font-medium">{u.display_name || u.id}</span>
+              <span className="font-bold text-ink">{u.display_name || u.id}</span>
               <span className="ms-auto flex gap-2">
                 {u.is_professional && (
                   <RevokeButton userId={u.id} kind="professional" />

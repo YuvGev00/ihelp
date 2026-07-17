@@ -1,7 +1,7 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
 import { createClient } from "@/lib/supabase/server";
-import { EmptyState, formatDate } from "@/components/ui";
+import { EmptyState, OfferPriceChip } from "@/components/ui";
 import { S } from "@/lib/strings";
 
 export default async function MyOffersPage() {
@@ -16,7 +16,7 @@ export default async function MyOffersPage() {
   // action itself still exists (a helper's exit before assignment).
   const { data: offers } = await supabase
     .from("offers")
-    .select("id, request_id, request_title, status, message, created_at")
+    .select("id, request_id, request_title, status, message, pricing_mode, price, final_price, created_at")
     .eq("helper_id", user.id)
     .neq("status", "withdrawn")
     .order("created_at", { ascending: false });
@@ -32,34 +32,36 @@ export default async function MyOffersPage() {
 
   const OFFER_STYLES: Record<string, string> = {
     active: "bg-sky-100 text-sky-800",
-    selected: "bg-emerald-100 text-emerald-800",
-    closed: "bg-stone-200 text-stone-600",
+    selected: "bg-mint text-brand",
+    closed: "bg-[#f2f5f4] text-muted",
     withdrawn: "bg-red-100 text-red-700",
   };
 
   return (
     <div className="space-y-4">
-      <h1 className="text-2xl font-bold">{S.offers.myOffersTitle}</h1>
+      <h1 className="text-2xl font-extrabold text-ink">{S.offers.myOffersTitle}</h1>
 
       {!offers?.length ? (
         <EmptyState message={S.offers.noMyOffers} />
       ) : (
-        <ul className="space-y-2">
+        <ul className="space-y-2.5">
           {offers.map((o) => {
+            // A closed (lost) offer is dimmed — it's history, not actionable.
+            const dimmed = o.status === "closed";
             const card = (
-              <div className="card flex flex-wrap items-center gap-3">
-                <span className={`chip ${OFFER_STYLES[o.status] ?? ""}`}>
-                  {S.offers.status[o.status]}
-                </span>
-                <span className="font-medium">{o.request_title}</span>
-                {!visible.has(o.request_id) && (
-                  <span className="text-xs text-stone-400">
-                    ({S.offers.requestGone})
+              <div className={`card block ${dimmed ? "opacity-70" : ""}`}>
+                <div className="mb-1.5 flex items-center justify-between gap-2">
+                  <span className={`chip ${OFFER_STYLES[o.status] ?? ""}`}>
+                    {S.offers.status[o.status]}
                   </span>
-                )}
-                <span className="ms-auto text-xs text-stone-400">
-                  {formatDate(o.created_at)}
-                </span>
+                  <OfferPriceChip offer={o} />
+                </div>
+                <h2 className="font-bold text-ink">{o.request_title}</h2>
+                <p className="mt-1 line-clamp-1 text-xs text-muted">
+                  {!visible.has(o.request_id)
+                    ? S.offers.requestGone
+                    : `״${o.message}״`}
+                </p>
               </div>
             );
             return (
@@ -67,7 +69,7 @@ export default async function MyOffersPage() {
                 {visible.has(o.request_id) ? (
                   <Link
                     href={`/requests/${o.request_id}`}
-                    className="block hover:opacity-90"
+                    className="block transition hover:-translate-y-0.5"
                   >
                     {card}
                   </Link>

@@ -31,7 +31,7 @@ export function GeolocationPrompt({ hasLocation }: { hasLocation: boolean }) {
 
   return (
     <div className="space-y-2">
-      <p className="text-sm text-stone-600">
+      <p className="text-sm text-body">
         {hasLocation || status === "saved"
           ? S.profile.locationSet
           : S.profile.locationUnset}

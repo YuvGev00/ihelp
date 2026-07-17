@@ -63,11 +63,11 @@ export default async function HelperProfilePage({
               <li key={i} className="card">
                 <div className="flex items-center justify-between">
                   <Stars value={r.stars} />
-                  <span className="text-xs text-stone-400">
+                  <span className="text-xs text-muted">
                     {formatDate(r.created_at)}
                   </span>
                 </div>
-                {r.note && <p className="mt-1 text-sm text-stone-600">{r.note}</p>}
+                {r.note && <p className="mt-1 text-sm text-body">{r.note}</p>}
               </li>
             ))}
           </ul>

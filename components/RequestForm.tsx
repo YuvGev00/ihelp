@@ -114,12 +114,12 @@ function LocationField({
     <div>
       <span className="field-label">{S.requests.location}</span>
       {loc ? (
-        <p className="text-sm text-emerald-700">
+        <p className="text-sm text-brand">
           {S.profile.locationSet}{" "}
           {fromProfile && `(${S.requests.locationFromProfile})`}
         </p>
       ) : (
-        <p className="text-sm text-stone-500">{S.profile.locationUnset}</p>
+        <p className="text-sm text-muted">{S.profile.locationUnset}</p>
       )}
       <button
         type="button"
@@ -208,7 +208,7 @@ export function EditRequestForm({
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}
-      {state?.ok && <p className="text-sm text-emerald-700">{S.profile.saved}</p>}
+      {state?.ok && <p className="text-sm text-brand">{S.profile.saved}</p>}
       <button type="submit" disabled={pending} className="btn-primary">
         {pending ? S.common.loading : S.requests.saveChanges}
       </button>

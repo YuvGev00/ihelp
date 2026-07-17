@@ -46,7 +46,7 @@ export default async function ProfilePage() {
       </div>
 
       {isOnboarding && (
-        <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <p className="rounded-2xl border border-mint-border bg-mint p-3 text-sm font-semibold text-pine">
           {S.profile.onboardingHint}
         </p>
       )}

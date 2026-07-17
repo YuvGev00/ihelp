@@ -23,15 +23,15 @@ function latestByKind(apps: Application[], kind: Application["kind"]) {
 function ApplicationStatus({ app }: { app: Application }) {
   if (app.status === "pending") {
     return (
-      <p className="rounded-lg border border-sky-200 bg-sky-50 p-3 text-sm text-sky-900">
-        {S.verification.pending}
+      <p className="rounded-2xl border border-[#f5e6bf] bg-[#fff8e6] p-3 text-sm font-semibold text-[#a16207]">
+        ● {S.verification.pending}
       </p>
     );
   }
   if (app.status === "rejected" || app.status === "revoked") {
     return (
-      <div className="rounded-lg border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-        <p className="font-semibold">{S.verification.rejected}</p>
+      <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
+        <p className="font-bold">{S.verification.rejected}</p>
         {app.admin_note && (
           <p>
             {S.verification.rejectedNote}: {app.admin_note}
@@ -73,15 +73,21 @@ export default async function VerificationPage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{S.verification.title}</h1>
+        <h1 className="text-2xl font-extrabold text-ink">{S.verification.title}</h1>
         <Badge verified={identityVerified} professional={isProfessional} />
       </div>
 
-      <p className="text-sm text-stone-600">{S.verification.explainer}</p>
+      {/* Explainer — verification is the trust hero, framed with a lock */}
+      <div className="flex gap-3 rounded-2xl border border-mint-border bg-mint p-4">
+        <span className="text-xl leading-none">🔒</span>
+        <p className="text-sm leading-relaxed text-[#2c5a4a]">
+          {S.verification.explainer}
+        </p>
+      </div>
 
       {/* Identity track */}
       {identityVerified ? (
-        <p className="rounded-lg border border-emerald-200 bg-emerald-50 p-3 text-sm text-emerald-900">
+        <p className="rounded-2xl border border-mint-border bg-mint p-3 text-sm font-semibold text-pine">
           {S.verification.identityTitle}: {S.verification.approved}
         </p>
       ) : identityApp?.status === "pending" ? (
@@ -96,7 +102,7 @@ export default async function VerificationPage() {
       {/* Professional track — unlocked by identity verification */}
       {identityVerified &&
         (isProfessional ? (
-          <p className="rounded-lg border border-blue-200 bg-blue-50 p-3 text-sm text-blue-900">
+          <p className="rounded-2xl border border-[#cddcff] bg-pro-bg p-3 text-sm font-semibold text-pro">
             {S.verification.professionalTitle}: {S.verification.approved}
           </p>
         ) : professionalApp?.status === "pending" ? (

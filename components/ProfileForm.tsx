@@ -71,7 +71,7 @@ export function ProfileForm({
         <Avatar name={name} path={previewPath} size={64} />
         <div>
           <span className="field-label">{S.profile.avatar}</span>
-          <p className="mb-1 text-xs text-stone-500">{S.profile.avatarHint}</p>
+          <p className="mb-1 text-xs text-muted">{S.profile.avatarHint}</p>
           <div className="flex items-center gap-2">
             <input
               ref={inputRef}
@@ -80,7 +80,7 @@ export function ProfileForm({
               onChange={onPick}
               disabled={busy}
               aria-label={S.profile.avatarChange}
-              className="text-sm text-stone-600 file:me-2 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-emerald-700"
+              className="text-sm text-body file:me-2 file:rounded-lg file:border-0 file:bg-mint file:px-3 file:py-1.5 file:text-sm file:font-semibold file:text-brand"
             />
             {previewPath && (
               <button
@@ -92,7 +92,7 @@ export function ProfileForm({
               </button>
             )}
           </div>
-          {busy && <p className="text-sm text-stone-500">מעלה…</p>}
+          {busy && <p className="text-sm text-muted">מעלה…</p>}
           {avatarError && <p className="field-error">{avatarError}</p>}
         </div>
       </div>
@@ -132,7 +132,7 @@ export function ProfileForm({
           placeholder="0501234567"
           className="field-input"
         />
-        <p className="mt-1 text-xs text-stone-500">{S.profile.phoneNote}</p>
+        <p className="mt-1 text-xs text-muted">{S.profile.phoneNote}</p>
         {state && !state.ok && state.fieldErrors?.phone && (
           <p className="field-error">{state.fieldErrors.phone}</p>
         )}
@@ -141,7 +141,7 @@ export function ProfileForm({
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}
-      {state?.ok && <p className="text-sm text-emerald-700">{S.profile.saved}</p>}
+      {state?.ok && <p className="text-sm text-brand">{S.profile.saved}</p>}
 
       <button type="submit" disabled={pending || busy} className="btn-primary">
         {pending ? S.common.loading : S.profile.save}

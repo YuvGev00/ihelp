@@ -12,8 +12,8 @@ export const dynamic = "force-static";
 export default function EmergencyPage() {
   return (
     <main className="mx-auto max-w-lg px-6 py-12">
-      <h1 className="mb-2 text-3xl font-bold">{S.emergency.title}</h1>
-      <p className="mb-8 rounded-lg bg-amber-50 border border-amber-200 p-3 text-sm text-amber-900">
+      <h1 className="mb-3 text-3xl font-extrabold text-ink">{S.emergency.title}</h1>
+      <p className="mb-8 rounded-2xl border border-red-200 bg-red-50 p-3 text-sm font-semibold text-red-800">
         {S.emergency.notice}
       </p>
 
@@ -24,8 +24,8 @@ export default function EmergencyPage() {
             className="card flex items-center justify-between"
           >
             <div>
-              <div className="font-semibold">{svc.name}</div>
-              <div className="text-2xl font-bold text-stone-700" dir="ltr">
+              <div className="font-bold text-ink">{svc.name}</div>
+              <div className="text-2xl font-extrabold text-brand" dir="ltr">
                 {svc.phone}
               </div>
             </div>
@@ -36,7 +36,7 @@ export default function EmergencyPage() {
         ))}
       </ul>
 
-      <Link href="/" className="mt-8 inline-block text-sm text-stone-500 underline">
+      <Link href="/" className="mt-8 inline-block text-sm text-muted underline">
         {S.common.back}
       </Link>
     </main>

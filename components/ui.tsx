@@ -35,7 +35,7 @@ export function Avatar({
     <span
       style={dim}
       aria-hidden
-      className="flex shrink-0 items-center justify-center rounded-full bg-emerald-100 font-semibold text-emerald-800"
+      className="flex shrink-0 items-center justify-center rounded-full bg-mint font-bold text-brand"
     >
       {initial}
     </span>
@@ -53,11 +53,11 @@ export function Badge({
   if (!verified) return null;
   return (
     <span className="inline-flex gap-1">
-      <span className="chip bg-emerald-100 text-emerald-800">
+      <span className="chip bg-mint text-brand">
         {S.verification.verifiedIdentity} ✓
       </span>
       {professional && (
-        <span className="chip bg-blue-100 text-blue-800">
+        <span className="chip bg-pro-bg text-pro">
           {S.verification.professionalBadge}
         </span>
       )}
@@ -74,18 +74,18 @@ export function Stars({
   count?: number;
 }) {
   if (value === null || count === 0) {
-    return <span className="text-xs text-stone-400">{S.helpers.noRatings}</span>;
+    return <span className="text-xs text-muted">{S.helpers.noRatings}</span>;
   }
   const rounded = Math.round(value);
   return (
     <span className="inline-flex items-center gap-1 text-sm">
-      <span className="text-amber-500" aria-label={`${value.toFixed(1)} ${S.lifecycle.stars}`}>
+      <span className="text-star" aria-label={`${value.toFixed(1)} ${S.lifecycle.stars}`}>
         {"★".repeat(rounded)}
         {"☆".repeat(5 - rounded)}
       </span>
-      <span className="text-stone-600">{value.toFixed(1)}</span>
+      <span className="font-bold text-body">{value.toFixed(1)}</span>
       {count !== undefined && (
-        <span className="text-xs text-stone-400">({count})</span>
+        <span className="text-xs text-muted">({count})</span>
       )}
     </span>
   );
@@ -121,7 +121,7 @@ export function PublicStatusChip({ status }: { status: string }) {
 
 /** Shown to the owner/admin on a moderated request (invisible to browsers). */
 export function HiddenChip() {
-  return <span className="chip bg-stone-800 text-white">{S.requests.hidden}</span>;
+  return <span className="chip bg-ink text-white">{S.requests.hidden}</span>;
 }
 
 type OfferPricing = {
@@ -152,7 +152,7 @@ export function OfferPriceChip({ offer }: { offer: OfferPricing }) {
 
 export function EmptyState({ message }: { message: string }) {
   return (
-    <div className="card py-10 text-center text-stone-500">{message}</div>
+    <div className="card py-10 text-center text-muted">{message}</div>
   );
 }
 

@@ -22,9 +22,15 @@ export function AuthForm({
 
   return (
     <main className="mx-auto flex min-h-screen max-w-sm flex-col justify-center px-6">
-      <h1 className="mb-6 text-center text-2xl font-bold">
-        {isSignUp ? S.auth.signUpTitle : S.auth.signInTitle}
-      </h1>
+      <div className="mb-8 flex flex-col items-center text-center">
+        <span className="mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-brand text-3xl font-extrabold text-white">
+          i
+        </span>
+        <h1 className="text-2xl font-extrabold text-ink">
+          {isSignUp ? S.auth.signUpTitle : S.auth.signInTitle}
+        </h1>
+        <p className="mt-1 text-sm text-muted">{S.tagline}</p>
+      </div>
 
       <form action={formAction} className="card space-y-4">
         <div>
@@ -60,7 +66,7 @@ export function AuthForm({
             autoComplete={isSignUp ? "new-password" : "current-password"}
           />
           {isSignUp && (
-            <p className="mt-1 text-xs text-stone-500">{S.auth.passwordHint}</p>
+            <p className="mt-1 text-xs text-muted">{S.auth.passwordHint}</p>
           )}
           {state && !state.ok && state.fieldErrors?.password && (
             <p className="field-error">{state.fieldErrors.password}</p>
@@ -80,11 +86,11 @@ export function AuthForm({
         </button>
       </form>
 
-      <p className="mt-4 text-center text-sm text-stone-600">
+      <p className="mt-4 text-center text-sm text-body">
         {isSignUp ? S.auth.haveAccount : S.auth.noAccount}{" "}
         <Link
           href={isSignUp ? "/login" : "/signup"}
-          className="font-semibold text-emerald-700 underline"
+          className="font-bold text-brand underline"
         >
           {isSignUp ? S.nav.signIn : S.nav.signUp}
         </Link>

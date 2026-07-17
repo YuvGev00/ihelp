@@ -91,7 +91,7 @@ export function FileUploader({
       <label htmlFor={inputId} className="field-label">
         {label}
       </label>
-      {hint && <p className="mb-2 text-xs text-stone-500">{hint}</p>}
+      {hint && <p className="mb-2 text-xs text-muted">{hint}</p>}
       <input
         id={inputId}
         ref={inputRef}
@@ -100,16 +100,16 @@ export function FileUploader({
         multiple={maxFiles > 1}
         onChange={onChange}
         disabled={busy || paths.length >= maxFiles}
-        className="block w-full text-sm text-stone-600 file:me-3 file:rounded-lg file:border-0 file:bg-emerald-50 file:px-3 file:py-2 file:text-sm file:font-semibold file:text-emerald-700"
+        className="block w-full text-sm text-body file:me-3 file:rounded-lg file:border-0 file:bg-mint file:px-3 file:py-2 file:text-sm file:font-semibold file:text-brand"
       />
-      {busy && <p className="mt-1 text-sm text-stone-500">מעלה…</p>}
+      {busy && <p className="mt-1 text-sm text-muted">מעלה…</p>}
       {error && <p className="field-error">{error}</p>}
       {paths.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-1.5">
           {paths.map((p, i) => (
             <li
               key={p}
-              className="chip gap-1.5 bg-emerald-50 text-emerald-800"
+              className="chip gap-1.5 bg-mint text-brand"
             >
               קובץ {i + 1} ✓
               <button

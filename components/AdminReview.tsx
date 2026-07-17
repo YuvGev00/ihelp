@@ -13,7 +13,7 @@ export function ReviewForm({ applicationId }: { applicationId: string }) {
   const noteId = `note-${applicationId}`;
 
   return (
-    <form action={formAction} className="mt-3 space-y-2 border-t border-stone-100 pt-3">
+    <form action={formAction} className="mt-3 space-y-2 border-t border-line pt-3">
       <input type="hidden" name="applicationId" value={applicationId} />
       <div>
         <label htmlFor={noteId} className="field-label">

@@ -16,7 +16,7 @@ export function IdentityApplicationForm() {
 
   return (
     <form action={formAction} className="card space-y-4">
-      <h2 className="font-semibold">{S.verification.identityTitle}</h2>
+      <h2 className="font-extrabold text-ink">{S.verification.identityTitle}</h2>
 
       <div>
         <label htmlFor="fullName" className="field-label">
@@ -91,8 +91,8 @@ export function ProfessionalApplicationForm({
 
   return (
     <form action={formAction} className="card space-y-4">
-      <h2 className="font-semibold">{S.verification.professionalTitle}</h2>
-      <p className="text-sm text-stone-600">
+      <h2 className="font-extrabold text-ink">{S.verification.professionalTitle}</h2>
+      <p className="text-sm text-body">
         {S.verification.professionalExplainer}
       </p>
 
