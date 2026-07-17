@@ -92,17 +92,18 @@ export function Stars({
 }
 
 const STATUS_STYLES: Record<string, string> = {
-  open: "bg-emerald-100 text-emerald-800",
+  open: "bg-mint text-brand",
   has_offers: "bg-sky-100 text-sky-800",
-  assigned: "bg-indigo-100 text-indigo-800",
-  completed: "bg-stone-200 text-stone-700",
-  rated: "bg-amber-100 text-amber-800",
+  assigned: "bg-[#eef2ff] text-[#4f5bd5]",
+  completed: "bg-[#f2f5f4] text-body",
+  rated: "bg-[#fef3c7] text-[#a16207]",
   cancelled: "bg-red-100 text-red-700",
 };
 
 export function StatusChip({ status }: { status: string }) {
   return (
-    <span className={`chip ${STATUS_STYLES[status] ?? "bg-stone-100 text-stone-600"}`}>
+    <span className={`chip gap-1 ${STATUS_STYLES[status] ?? "bg-[#f2f5f4] text-body"}`}>
+      <span aria-hidden className="text-[8px] leading-none">●</span>
       {S.requests.status[status] ?? status}
     </span>
   );

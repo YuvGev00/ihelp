@@ -120,29 +120,45 @@ export default async function RequestsFeedPage({
     return qs ? `?${qs}` : "";
   };
 
+  // Pill filter chip — active gets the brand fill, the rest a bordered white.
+  const filterChip = (on: boolean) =>
+    `chip whitespace-nowrap ${
+      on
+        ? "bg-brand text-white"
+        : "border border-line bg-white text-body hover:border-brand/40"
+    }`;
+
   return (
     <div className="space-y-4">
       <div className="flex flex-wrap items-center justify-between gap-3">
-        <h1 className="text-2xl font-bold">{S.requests.feedTitle}</h1>
-        <Link href="/requests/new" className="btn-primary">
+        <div>
+          <h1 className="text-2xl font-extrabold text-ink">
+            {S.requests.feedTitle}
+          </h1>
+          {viewer && (
+            <p className="mt-0.5 text-sm text-muted">{S.requests.sortedByDistance}</p>
+          )}
+        </div>
+        {/* Desktop-only 'new request' button — on mobile the FAB covers this */}
+        <Link href="/requests/new" className="btn-primary hidden md:inline-flex">
           + {S.requests.newRequest}
         </Link>
       </div>
 
       {!viewer && (
-        <p className="text-sm text-stone-500">
+        <p className="text-sm text-muted">
           {S.profile.locationUnset}{" "}
-          <Link href="/profile" className="underline">
+          <Link href="/profile" className="text-brand underline">
             {S.nav.profile}
           </Link>
         </p>
       )}
 
-      {/* Filters as chips — URL is the state */}
+      {/* Category filters — pill chips, URL is the state */}
       <div className="flex flex-wrap gap-2 text-sm">
         <Link
           href={`/requests${params({ category: undefined, page: undefined })}`}
-          className={`chip ${!category ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+          className={filterChip(!category)}
         >
           {S.requests.allCategories}
         </Link>
@@ -150,7 +166,7 @@ export default async function RequestsFeedPage({
           <Link
             key={c.key}
             href={`/requests${params({ category: c.key, page: undefined })}`}
-            className={`chip ${category === c.key ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+            className={filterChip(category === c.key)}
           >
             {c.label}
           </Link>
@@ -160,12 +176,12 @@ export default async function RequestsFeedPage({
       {/* Distance filter — range chips. Disabled without a viewer location
           (distance can't be computed); the hint links to the profile. */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="text-stone-500">{S.requests.distanceLabel}:</span>
+        <span className="font-bold text-[#35433d]">{S.requests.distanceLabel}:</span>
         {viewer ? (
           <>
             <Link
               href={`/requests${params({ dist: undefined, page: undefined })}`}
-              className={`chip ${!distKm ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+              className={filterChip(!distKm)}
             >
               {S.requests.distanceAll}
             </Link>
@@ -173,16 +189,16 @@ export default async function RequestsFeedPage({
               <Link
                 key={km}
                 href={`/requests${params({ dist: String(km), page: undefined })}`}
-                className={`chip ${distKm === km ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700 hover:bg-stone-200"}`}
+                className={filterChip(distKm === km)}
               >
                 {S.requests.distanceKm(km)}
               </Link>
             ))}
           </>
         ) : (
-          <span className="text-xs text-stone-400">
+          <span className="text-xs text-muted">
             {S.requests.distanceNeedsLocation}{" "}
-            <Link href="/profile" className="underline">
+            <Link href="/profile" className="text-brand underline">
               {S.nav.profile}
             </Link>
           </span>
@@ -201,39 +217,45 @@ export default async function RequestsFeedPage({
           }
         />
       ) : (
-        <ul className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          {pageItems.map((r) => (
-            <li key={r.id}>
-              <Link
-                href={`/requests/${r.id}`}
-                className="card block transition hover:-translate-y-0.5 hover:border-emerald-400 hover:shadow-md"
-              >
-                {photoByRequest.get(r.id) && (
-                  // eslint-disable-next-line @next/next/no-img-element
-                  <img
-                    src={photoByRequest.get(r.id)!}
-                    alt=""
-                    className="mb-3 h-36 w-full rounded-lg bg-stone-100 object-cover"
-                  />
-                )}
-                <div className="mb-2 flex flex-wrap items-center gap-1.5">
-                  <PublicStatusChip status={r.status} />
-                  <span className="chip bg-stone-100 text-stone-600">
-                    {categoryLabel(r.category)}
-                  </span>
-                </div>
-                <h2 className="font-semibold">{r.title}</h2>
-                <p className="mt-1 flex justify-between text-xs text-stone-500">
-                  <span>
-                    {r.distanceKm != null
-                      ? `${formatDistance(r.distanceKm)} ${S.requests.away}`
-                      : S.requests.distanceUnknown}
-                  </span>
-                  <span>{formatDate(r.created_at)}</span>
-                </p>
-              </Link>
-            </li>
-          ))}
+        <ul className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+          {pageItems.map((r) => {
+            const photo = photoByRequest.get(r.id);
+            return (
+              <li key={r.id}>
+                <Link
+                  href={`/requests/${r.id}`}
+                  className="card flex gap-3 p-3 transition hover:-translate-y-0.5 hover:border-brand/40"
+                >
+                  {/* Image-left thumbnail (mint placeholder when none) */}
+                  <div className="h-[82px] w-[82px] shrink-0 overflow-hidden rounded-xl bg-[#e5efeb]">
+                    {photo && (
+                      // eslint-disable-next-line @next/next/no-img-element
+                      <img src={photo} alt="" className="h-full w-full object-cover" />
+                    )}
+                  </div>
+                  <div className="min-w-0 flex-1">
+                    <div className="mb-1.5 flex flex-wrap items-center gap-1.5">
+                      <PublicStatusChip status={r.status} />
+                      <span className="text-[11px] font-semibold text-muted">
+                        {categoryLabel(r.category)}
+                      </span>
+                    </div>
+                    <h2 className="line-clamp-2 font-bold leading-snug text-ink">
+                      {r.title}
+                    </h2>
+                    <p className="mt-1.5 flex justify-between text-xs text-muted">
+                      <span className="font-semibold text-brand">
+                        {r.distanceKm != null
+                          ? `${formatDistance(r.distanceKm)} ${S.requests.away}`
+                          : S.requests.distanceUnknown}
+                      </span>
+                      <span>{formatDate(r.created_at)}</span>
+                    </p>
+                  </div>
+                </Link>
+              </li>
+            );
+          })}
         </ul>
       )}
 
@@ -243,7 +265,7 @@ export default async function RequestsFeedPage({
             <Link
               key={p}
               href={`/requests${params({ page: String(p) })}`}
-              className={`chip ${p === pageNum ? "bg-emerald-600 text-white" : "bg-stone-100 text-stone-700"}`}
+              className={filterChip(p === pageNum)}
             >
               {p}
             </Link>
