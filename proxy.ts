@@ -6,9 +6,11 @@ export async function proxy(request: NextRequest) {
 }
 
 export const config = {
-  // /emergency is excluded on purpose: the page must stay provably static —
-  // no session refresh, no Supabase call on its behalf (product spec §11).
+  // Excluded from session-refresh + auth redirects:
+  // - /emergency: must stay provably static (product spec §11)
+  // - /api/health: public keep-alive endpoint — must be reachable
+  //   unauthenticated (the scheduled ping carries no session)
   matcher: [
-    "/((?!_next/static|_next/image|favicon.ico|emergency|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
+    "/((?!_next/static|_next/image|favicon.ico|emergency|api/health|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)",
   ],
 };
