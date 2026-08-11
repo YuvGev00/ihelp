@@ -22,9 +22,9 @@ Next.js 16 on Vercel
   lib/     ─ supabase clients │ geo │ validation │ strings │ errors
   ▼  anon key + user JWT on every call
 Supabase
-  Postgres ─ RLS policies + grants + constraints + 10 RPCs + 4 triggers  ← THE AUTHORITY
+  Postgres ─ RLS policies + grants + constraints + 11 RPCs + 4 triggers + 3 helpers  ← THE AUTHORITY
   Auth     ─ email/password, cookie sessions
-  Storage  ─ request-photos, verification-docs (private, signed URLs)
+  Storage  ─ request-photos, verification-docs (private, signed URLs) + avatars (public)
 ```
 
 One sentence to open with: **"Every rule is enforced in the database; the UI
@@ -36,18 +36,22 @@ directly to prove it."**
 | Path | What it is | Present it when asked about |
 |---|---|---|
 | `supabase/migrations/0001–0003` | Enums, tables + constraints, indexes | Schema, data integrity |
-| `supabase/migrations/0004_functions.sql` | 3 policy helpers + **10 SECURITY DEFINER RPCs** | State machine, atomicity, "how do you stop X" |
+| `supabase/migrations/0004_functions.sql` | 3 policy helpers + the SECURITY DEFINER RPCs (**11 total** after 0009–0011) | State machine, atomicity, "how do you stop X" |
 | `supabase/migrations/0005_triggers.sql` | Signup, offer-status sync, **column guard**, offer-insert prep | "RLS can't do that" questions |
 | `supabase/migrations/0006_policies.sql` | Every RLS policy + the `helper_ratings` view | Authorization |
 | `supabase/migrations/0008_grants.sql` | Explicit least-privilege verb grants | The platform-defaults war story |
+| `supabase/migrations/0009–0011` | Pricing redesign: price moves to the offer — `pricing_mode` {fixed/volunteer/after_job} + `price`/`final_price`, `set_final_price` RPC, `help_requests.payment_type` dropped | "Who sets the price" |
+| `supabase/migrations/0012_avatars.sql` | `profiles.avatar_path` + the third bucket: `avatars`, **public** | Profile pictures, public vs private buckets |
+| `supabase/migrations/0013_pin_final_price_insert.sql` | Security fix: pins `final_price is null` at offer insert (closes the set_final_price bypass) | "Did you find any holes yourselves" |
 | `proxy.ts`, `lib/supabase/middleware.ts` | Session refresh, signed-out/signed-in redirects, `/emergency` exclusion | Auth plumbing, static emergency page |
 | `app/(app)/layout.tsx` → `(onboarded)/layout.tsx` | Session shell → onboarding gate | Route-group trick (no redirect loop) |
 | `app/(app)/(onboarded)/requests/page.tsx` | Feed: capped fetch → Haversine sort → paginate → bulk-sign photos | Scale, geo |
 | `app/(app)/(onboarded)/requests/[id]/page.tsx` | The role-adaptive detail page — the whole lifecycle UI | Product demo, per-role views |
-| `actions/*.ts` | The complete write surface (17 actions) | "Where does X happen" |
+| `actions/*.ts` | The complete write surface (21 actions) | "Where does X happen" |
 | `lib/validation/*.ts` | zod schemas mirroring DB constraints | Input validation |
-| `lib/geo.ts` | Haversine, ~15 lines | "Why no PostGIS/maps API" |
-| `tests/integration/*.test.ts` | 26 tests attacking the DB as real users | Security proof |
+| `lib/geo.ts` | Haversine, ~15 lines | "Why no PostGIS" |
+| `components/MapView / RequestsMap / MapPicker` | Leaflet maps: request location, feed pins, click-to-pick | Maps, the OpenStreetMap dependency |
+| `tests/integration/*.test.ts` | 29 tests attacking the DB as real users | Security proof |
 | `e2e/core-flow.spec.ts` | Two-browser core loop | "Show me it works" |
 | `scripts/seed.ts` | Demo data, every lifecycle state | Demo prep |
 
@@ -62,9 +66,11 @@ directly to prove it."**
    tables — the RPC is the only door.*
 2. **Offer** — direct insert on `offers`; the INSERT policy pins verified
    caller, not-own-request, open/visible request, **`status='active'`**
-   (an offer cannot be born "selected"), and the **price rule**: the helper's
-   price rides the offer (null = volunteering, allowed anywhere; a priced offer
-   is allowed only where the requester's intent is *paid*). Trigger T2 flips
+   (an offer cannot be born "selected"), and the **price rule**: the offer
+   declares a `pricing_mode` — `fixed` (quote in `price`), `volunteer` (free),
+   or `after_job` (the selected helper sets `final_price` via the
+   `set_final_price` RPC only after completion) — any stance on any request;
+   `final_price` is pinned null at insert (0013). Trigger T2 flips
    the request to `has_offers` (definer — a helper's insert updates the
    requester's row). Trigger T4 snapshots the request title onto the offer
    (my-offers renders after the parent becomes invisible).
@@ -87,15 +93,17 @@ directly to prove it."**
 **Product**
 - *Reversed marketplace?* Demand posts once; supply competes — shortens time-to-help (spec §3).
 - *Both sides verified?* A fake request lures a helper as easily as a fake helper harms a requester — symmetric physical risk ⇒ symmetric gate (spec §4.1).
-- *No payments?* External dependency + compliance for zero mechanic-validation value; the agreed price (the selected offer's) is data, "paid" is a marker (spec §3).
-- *Helpers dictate the price?* Deepens the reversed-marketplace mechanic — supply competes on price, not just trust/speed; the request keeps paid/volunteer as *intent* only, and a helper may volunteer even on a paid request (spec §3; priced offers on volunteer requests are policy-denied).
+- *No payments?* External dependency + compliance for zero mechanic-validation value; the agreed amount (`coalesce(price, final_price)` of the selected offer) is data, "paid" is a marker (spec §3).
+- *Helpers dictate the price?* Deepens the reversed-marketplace mechanic — supply competes on price, not just trust/speed; the request carries no payment type at all (dropped in 0011): every offer declares `fixed` / `volunteer` / `after_job`, on any request.
 - *No chat?* Phone reveal after mutual commitment covers coordination; chat is the first post-MVP item (spec §3).
 - *Emergency page static?* Anything that looks like dispatch creates a life-safety expectation we cannot meet — `force-static` + middleware exclusion make it *provably* inert (spec §11).
 
 **Architecture**
 - *Server Actions, no REST?* Less surface to secure; nothing external calls us (arch §7).
 - *profiles split in two?* RLS is row-level; helper cards need broad reads, so phone/coords/admin-flag live in an own-row-only table (arch §4.1 — was the review's critical catch).
-- *10 RPCs?* Every rule RLS cannot express: cross-owner writes, old-vs-new column rules, multi-table atomicity, column slicing (arch §4.2).
+- *11 RPCs?* Every rule RLS cannot express: cross-owner writes, old-vs-new column rules, multi-table atomicity, column slicing (arch §4.2).
+- *Maps without an API key?* Leaflet in the browser; the one third-party runtime dependency is OpenStreetMap raster tiles — display-only, keyless, free; a tile-server outage degrades to a blank map square, never breaks a flow.
+- *Avatars in a public bucket?* Avatars render in `<img>` across the app and are non-sensitive public-identity data like display_name — a public bucket avoids per-render signed URLs; writes stay own-folder-only (0012).
 - *No service key in app?* Leaking the deployment's env grants nothing beyond a signed-up user (arch §9).
 - *Direct-to-storage uploads?* Server Actions cap bodies ~1MB; files never transit our functions (arch §5).
 - *No ORM?* The graded layer IS the SQL — an ORM would hide it (arch §3).
@@ -125,7 +133,7 @@ directly to prove it."**
 ## 6. Test Story (30 seconds)
 
 60 vitest tests + 1 Playwright spec. The pyramid is deliberately inverted
-toward **integration**: 26 tests create real users against a real Postgres and
+toward **integration**: 29 tests create real users against a real Postgres and
 attack every permission as the wrong user — the suite's centerpiece is denial,
 not happy paths, because the product's claim is "the database says no."
 E2E drives the full Hebrew UI with two browsers in 10 seconds.

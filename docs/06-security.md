@@ -13,7 +13,7 @@ migration or exercised by a test in the suite (`docs/04-testing-spec.md`).
 Server Actions re-check it for friendly errors — but both are convenience
 layers. The layer that decides is PostgreSQL: Row Level Security policies for
 row access, table grants for verb access, CHECK/unique constraints for value
-and cross-row rules, and ten SECURITY DEFINER functions (each with in-body
+and cross-row rules, and eleven SECURITY DEFINER functions (each with in-body
 permission checks) for atomic state transitions. A crafted HTTP request
 carrying a valid user JWT — bypassing our UI and server entirely — hits exactly
 the same wall, and the integration suite proves it by attempting every
@@ -45,11 +45,13 @@ Authorization is layered, and only the last layer is trusted (architecture §9):
 4. **PostgreSQL** — the authority:
    - **RLS policies** on all seven tables (every policy with its justification:
      technical design §2). No table has an `anon` policy of any kind.
-   - **Ten SECURITY DEFINER RPCs** own every state transition (assign,
+   - **Eleven SECURITY DEFINER RPCs** own every state transition (assign,
      dual-complete, cancel, rate, review, revoke, hide, mark-paid, create
-     request, contact reveal). Each starts with a permission check; row locks
-     make the transitions atomic (the withdraw-vs-assign race test proves the
-     rollback).
+     request, contact reveal, set final price). Each starts with a permission
+     check; row locks make the transitions atomic (the withdraw-vs-assign race
+     test proves the rollback). `set_final_price` is the model example of the
+     in-body checks: only the *selected helper* may call it, only for an
+     `after_job` offer, only once (a set `final_price` rejects a second call).
    - **Column-guard triggers** close what row-level policies cannot express:
      nobody PATCHes `status`, `is_paid`, verification flags, or `is_admin` —
      tested by attempting exactly that (P9, P10).
@@ -121,9 +123,14 @@ React escapes all rendered content by default and the codebase contains no
   setup) and is never configured on Vercel. Consequence: compromising the
   deployed environment's variables yields only the anon key — which grants
   nothing beyond what any signed-up user already has.
-- Storage delivery uses **1-hour signed URLs** created server-side under the
-  caller's own storage permissions — links expire instead of living in HTML
-  forever.
+- Delivery from the two **private** buckets (`request-photos`,
+  `verification-docs`) uses **1-hour signed URLs** created server-side under
+  the caller's own storage permissions — links expire instead of living in
+  HTML forever. The third bucket, `avatars`, is **public by design**: avatars
+  render in `<img>` across the app and are non-sensitive public-identity data
+  like `display_name`, so a public bucket avoids per-render signed URLs.
+  Writes are still policy-scoped to the owner's own folder, with a 2 MB size
+  limit and a JPEG/PNG/WebP MIME allowlist.
 
 ## 8. Secrets and Environment Variables (required list)
 
@@ -158,6 +165,10 @@ Honest list, ordered by how soon each should be addressed:
 | R8 | Single human admin = availability and abuse single-point | Full audit trail (`verification_applications`, `decided_by`) | Second admin + four-eyes revocation; audit log surface |
 | R9 | Demo seed accounts on the presentation instance | Env-supplied password, printed once | Rotate/delete demo users right after the demo |
 | R10 | Dependency drift (Next/Supabase/zod majors move fast) | Lockfile pins; CI-less repo relies on local runs | Dependabot + the test suite as the upgrade gate |
+
+One risk of this kind was found and fixed rather than listed: a direct offer
+INSERT could pre-set `final_price`, bypassing `set_final_price`'s guard chain —
+migration `0013` pins `final_price is null` at insert.
 
 None of these breaks the core guarantee of §1 — they are erosion risks at the
 edges, each with a bounded blast radius and a named, additive fix.

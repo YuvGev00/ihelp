@@ -27,12 +27,13 @@ Principles that shaped every choice below:
    explain.
 3. **Minimal external dependencies.** No payment gateway, no SMS, no
    geocoding/address-search API. The one third-party runtime dependency is
-   **OpenStreetMap raster tiles** for a display-only location map (Leaflet,
-   bundled from npm — not a CDN — with no API key). It is purely additive: the
-   dependency-free Haversine distance chip remains the source of truth, so if
-   tiles fail the app still functions. (Assignment stage 3 explicitly asks which
-   external services are integrated and why — this is the one, and its blast
-   radius is a blank map square.)
+   **OpenStreetMap raster tiles** — display-only, keyless, free — behind the
+   app's maps (request-location view, feed pins, click-to-pick location; Leaflet
+   bundled from npm, not a CDN). It is purely additive: the dependency-free
+   Haversine distance chip remains the source of truth, so a tile-server outage
+   degrades to a blank map square, never breaks a flow. (Assignment stage 3
+   explicitly asks which external services are integrated and why — this is the
+   one.)
 4. **Hebrew RTL UI, English code.** UI copy lives in one Hebrew strings module;
    code, comments, and docs are English.
 
@@ -54,7 +55,7 @@ graph TB
     subgraph Supabase
         AUTH[Auth<br/>email + password]
         PG[(PostgreSQL<br/>RLS + constraints + RPCs)]
-        ST[Storage<br/>request-photos, verification-docs]
+        ST[Storage<br/>request-photos, verification-docs, avatars]
     end
 
     RSCV --> RSC
@@ -69,7 +70,8 @@ graph TB
 
 **What deliberately does not exist:** a custom Express/API server (Next.js *is*
 the backend), a service-role Supabase client in application code (see §9), client
-state libraries, realtime subscriptions, background jobs, and any third-party API.
+state libraries, realtime subscriptions, background jobs, and any third-party API
+(the OpenStreetMap tile server of §1 is the sole external runtime dependency).
 
 ---
 
@@ -117,6 +119,7 @@ erDiagram
     profiles {
         uuid id PK "= auth.users.id"
         text display_name
+        text avatar_path "nullable — optional profile picture (public bucket)"
         bool is_identity_verified "denormalized gate flag"
         bool is_professional "denormalized badge flag"
     }
@@ -142,7 +145,6 @@ erDiagram
         uuid requester_id FK
         text status "open | has_offers | assigned | completed | rated | cancelled"
         bool is_hidden "admin moderation flag"
-        text payment_type "paid | volunteer"
         bool is_paid "owner marker, post-completion"
         float lat "request location (requester-confirmed)"
         float lng
@@ -157,7 +159,9 @@ erDiagram
         uuid helper_id FK
         text status "active | selected | closed | withdrawn"
         text message
-        numeric price "nullable — the helper's price; null = volunteering"
+        text pricing_mode "fixed | volunteer | after_job"
+        numeric price "the quote — set for fixed only (CHECK price_matches_mode)"
+        numeric final_price "after_job amount — set only via set_final_price RPC, post-completion"
         text request_title "snapshot for my-offers after parent turns invisible"
     }
     ratings {
@@ -224,7 +228,8 @@ constraints.
 | `review_application(application_id, verdict, note)` | Admin check; updates the application row and the applicant's profile flags together | Two-table atomic write; and an admin UPDATE policy on `profiles` would (row-level!) grant admins write to *every* profile column including `is_admin` — exactly what spec §4.4 forbids |
 | `revoke_verification(user_id, kind)` | Admin check; clears the identity or professional flag (and marks the approval revoked in the audit trail) | Same column-scoping argument as above |
 | `set_request_hidden(request_id, hidden)` | Admin check; touches only `is_hidden` | Guarantees moderation "leaves the lifecycle state untouched" (spec §8.6) by construction |
-| `mark_paid(request_id)` | Owner check; flips `is_paid` once, post-completion, only when the selected offer carries a price | A second permissive UPDATE policy would OR with the content-edit policy and reopen edits on finished jobs — permissive policies OR their USING/CHECK clauses independently |
+| `mark_paid(request_id)` | Owner check; flips `is_paid` once, post-completion, only when the selected offer carries an agreed amount (`coalesce(price, final_price)` — a volunteer job has nothing to mark) | A second permissive UPDATE policy would OR with the content-edit policy and reopen edits on finished jobs — permissive policies OR their USING/CHECK clauses independently |
+| `set_final_price(request_id, price)` | Selected-helper check; sets `final_price` on an `after_job` offer once, after the request is completed/rated; raises `invalid_price` on bad input | Old-vs-new column rule (write one column, once, in one state) on a row whose UPDATE rights otherwise ended when the offer left *active* — RLS cannot express any of that |
 | `get_counterpart_contact(request_id)` | Read-only: returns the other party's display name + phone (from `profiles_private`), only to the request owner or selected helper, from *assigned* onward | Column-level conditional exposure — row-level SELECT policies cannot reveal one column to one pair of users per row (spec §8.4) |
 
 **Trigger functions (invisible plumbing, same audit list):**
@@ -256,12 +261,19 @@ offer not on own request (INSERT policy).
 
 ## 5. Storage
 
-Two private buckets; access via storage RLS policies keyed to the same user JWT:
+Three buckets — two private, one public; access via storage RLS policies keyed to
+the same user JWT:
 
 | Bucket | Contents | Write | Read |
 |---|---|---|---|
-| `request-photos` | Request images | Any **identity-verified** user, into their own folder (`{user_id}/…`) | Any signed-in user |
-| `verification-docs` | ID photos, certificates | Applicant, into their own folder | Applicant + admins only |
+| `request-photos` (private) | Request images | Any **identity-verified** user, into their own folder (`{user_id}/…`) | Any signed-in user |
+| `verification-docs` (private) | ID photos, certificates | Applicant, into their own folder | Applicant + admins only |
+| `avatars` (**public**) | Optional profile pictures (2 MB limit, jpeg/png/webp) | Any signed-in user, into their own folder | Public URL |
+
+Why `avatars` is public where the other two are not: avatars render in `<img>`
+tags across the app (offer cards, helper profiles, nav), and an avatar is
+non-sensitive public-identity data of the same kind as `display_name` — a public
+bucket avoids minting per-render signed URLs for every card.
 
 Two honest notes on `request-photos`:
 
@@ -278,10 +290,10 @@ Two honest notes on `request-photos`:
   UUIDs, hiding is feed removal (not secrecy), and policy-level tightening is
   listed in the security document.
 
-**Downloads:** both buckets being private, images are rendered via **bulk signed
+**Downloads:** for the two private buckets, images are rendered via **bulk signed
 URLs** created by the Server Component per page (1-hour expiry) — the same
 storage policies authorize the signing, and URLs expire instead of living
-forever in the HTML.
+forever in the HTML. Avatars, being in a public bucket, use plain public URLs.
 
 **Uploads go directly from the browser to Supabase Storage** (authenticated with
 the user's JWT), and only the resulting storage path is sent to the Server
@@ -304,7 +316,7 @@ spec §4.1); the true enforcement is in the DB.
 | `/` | Landing → redirects to `/requests` when signed in | Public |
 | `/login`, `/signup` | Email/password auth | Public |
 | `/requests` | Browse open requests, distance-sorted when location known | Signed-in |
-| `/requests/new` | Post a request (photos, category, paid/volunteer, location) | Signed-in + gate |
+| `/requests/new` | Post a request (photos, category, location — pricing belongs to the helper's offer, not the request) | Signed-in + gate |
 | `/requests/[id]` | Request detail: offers (owner sees all, helper sees own), offer form, assignment, contact reveal, dual completion, rating | Signed-in (row visibility per RLS) |
 | `/my/requests` | My posted requests by status | Signed-in |
 | `/my/offers` | My offers and their statuses | Signed-in |
@@ -344,7 +356,7 @@ literal non-matching URL.)
 | Action | Validates | DB effect |
 |---|---|---|
 | `signUp`, `signIn`, `signOut` | credentials schema | Supabase Auth; profile rows via trigger |
-| `updateProfile` | name/phone schema | update own `profiles` + `profiles_private` rows (RLS: own row only) |
+| `updateProfile` | name/phone/avatar schema | update own `profiles` (incl. `avatar_path`) + `profiles_private` rows (RLS: own row only) |
 | `updateLocation` | lat/lng schema | update own `profiles_private` coordinates (called by the geolocation capture component) |
 | `submitIdentityApplication` | application schema | insert `verification_applications` (kind=identity, incl. the phone); on approval `review_application` copies the **reviewed** phone to `profiles_private` (spec §8.2 — the contact-reveal RPC depends on it) |
 | `submitProfessionalApplication` | application schema | insert `verification_applications` (kind=professional; INSERT policy requires approved identity) |
@@ -354,11 +366,12 @@ literal non-matching URL.)
 | `markPaid` | id | **RPC `mark_paid`** |
 | `createOffer` | offer schema | insert `offers` (RLS: identity-verified, not own request; partial unique index blocks duplicate active) |
 | `updateOffer`, `withdrawOffer` | offer schema / id | update own active offer (RLS) |
+| `setFinalPrice` | request id + price | **RPC `set_final_price`** (selected helper prices an `after_job` offer post-completion) |
 | `assignOffer` | ids | **RPC `assign_offer`** |
 | `confirmCompletion` | id | **RPC `confirm_completion`** |
 | `submitRating` | stars/note schema | **RPC `submit_rating`** |
-| `approveApplication`, `rejectApplication` | id + note | **RPC `review_application`** |
-| `hideRequest`, `unhideRequest` | id | **RPC `set_request_hidden`** |
+| `reviewApplication` | id + approve/reject + note | **RPC `review_application`** |
+| `setRequestHidden` | id + hidden flag | **RPC `set_request_hidden`** |
 | `revokeVerification` | user id + kind | **RPC `revoke_verification`** |
 
 Reads never go through actions: Server Components query Supabase directly and the
@@ -389,14 +402,15 @@ sequenceDiagram
     DB-->>N: rows the RLS policies allow
     N->>DB: select own profiles_private row (lat/lng — own-row policy)
     N->>N: Haversine in lib/geo.ts, sort by distance
-    N-->>B: rendered HTML — "2.4 ק"מ ממך", no raw coordinates
+    N-->>B: rendered HTML — "2.4 ק"מ ממך" chips + feed-map pins (request coords)
 ```
 
-Distance is computed **in the Server Component**, so the browsing UI never
-receives raw coordinates of other users — only formatted distances. (Request
-coordinates remain *queryable* by a signed-in API caller under MVP RLS — the
-accepted limitation of spec §9.3; profile home coordinates are **not**, thanks to
-the `profiles_private` split of §4.1.)
+Distance is computed **in the Server Component**, so the viewer's own home
+coordinates never leave the server — the list shows only formatted distances.
+Request coordinates *do* reach the browser, as pins on the feed map: they were
+already readable by any signed-in user under MVP RLS (the accepted limitation of
+spec §9.3), and the map surfaces them by design. Profile home coordinates are
+**not** exposed, thanks to the `profiles_private` split of §4.1.
 
 **Distance sorting vs pagination — the explicit MVP resolution:** the database
 cannot `ORDER BY` a distance computed in application code, so the RSC fetches
@@ -472,7 +486,7 @@ one above misses, and only the last one is trusted:
 3. **Server Action guards** — zod validation + fast permission pre-checks for
    friendly Hebrew errors. Convenience only.
 4. **Database** — RLS policies (per-row, per-action), unique/check constraints,
-   and the enumerated privileged-code inventory of §4.2 (ten RPCs, four trigger
+   and the enumerated privileged-code inventory of §4.2 (eleven RPCs, four trigger
    functions, three policy helpers, one definer view — each with in-body
    permission checks where applicable). **This layer is the authority**; a
    crafted request that skips layers 1–3 still hits it with nothing but the

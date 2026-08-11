@@ -56,7 +56,7 @@ bounding-box prefilter.
 ## 4. Avoiding Over-Fetching
 
 - **Column lists, not `*`, on every list query** (feed, offers, my-*, admin,
-  ratings) — the feed ships 9 columns per row, not the row. The single-row
+  ratings) — the feed ships 7 columns per row, not the row. The single-row
   request-detail read uses `*` deliberately: one row, most columns render.
 - **Reads are Server Components**: the browser receives rendered HTML, never
   raw rows — coordinates in particular stay server-side (architecture §8.1).
@@ -93,6 +93,10 @@ The separation was chosen for security, but it is also the scaling story:
 - **The only browser↔Supabase traffic is file upload** — deliberately, so
   multi-MB payloads never transit the Next.js server (architecture §5). Uploads
   scale with Supabase Storage, not with our functions.
+- **The one third-party runtime dependency is OpenStreetMap raster tiles** —
+  display-only, keyless, free; a tile-server outage degrades to a blank map
+  square, never breaks a flow. The browser fetches tiles directly from the OSM
+  tile CDN, so map traffic adds zero load to our servers or the DB.
 - Vercel serverless concurrency scales horizontally per request; nothing in the
   app holds cross-request state, so there is no coordination cost.
 
@@ -102,7 +106,7 @@ The separation was chosen for security, but it is also the scaling story:
 |---|---|---|---|
 | 1 | Feed cap 200 before distance sort | Feed misses older open requests; signal: open-request count approaching 200 | MVP scale is far below it; successor isolated to one query |
 | 2 | Rating aggregates computed on read | O(ratings-per-helper) per page | Correctness free of update anomalies; denormalized counters (trigger-maintained) are the successor when profiles get hot |
-| 3 | Signed URLs generated per page view | One storage API call per page | 1-hour expiry amortizes browsing; a CDN-cached public bucket with unguessable paths is the successor if photo traffic dominates |
+| 3 | Signed URLs generated per page view (request photos, verification docs) | One storage API call per page | 1-hour expiry amortizes browsing; a CDN-cached public bucket is the successor if photo traffic dominates — the public `avatars` bucket already uses that pattern, so profile pictures render with no per-view signing cost |
 | 4 | Orphaned storage objects (upload-then-abandon) | Growth ∝ abandoned forms; bounded by 5 MB × 5 | Invisible to users; periodic sweep (list objects, anti-join `request_photos`/`doc_path`) is a 20-line admin script |
 | 5 | Manual admin review queue | Human latency; signal: pending-queue age | The trust model *requires* a human in the MVP (spec §4.1); semi-automation (SMS OTP) is the roadmap |
 | 6 | No push/realtime — freshness is navigation-time | Users refresh to see new offers | Product decision (spec §10); Supabase Realtime is a drop-in successor on the offers table |

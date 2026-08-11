@@ -87,8 +87,9 @@ Trust is built from two independent mechanisms:
 
 ### What iHelp deliberately is not (MVP)
 
-- **Not a payment platform.** No money moves through the system. A paid request
-  carries the *selected offer's* price as data; after completion the requester can tick a
+- **Not a payment platform.** No money moves through the system. The *selected
+  offer's* price (fixed, or set by the helper after the job) is carried as data;
+  after completion the requester can tick a
   "paid" checkbox for record-keeping. Rationale: a real payment gateway adds a
   fragile, paid external dependency and heavy compliance scope with no learning
   value for the MVP; the marketplace mechanics are the product.
@@ -166,7 +167,8 @@ Any identity-verified user may post help requests. A requester can:
 - view all offers on their own requests and select one;
 - confirm completion from their side;
 - rate the helper after completion (once per request);
-- mark a paid request as paid (record-keeping only).
+- mark a request as paid when the selected offer carries a price
+  (record-keeping only).
 
 ### 4.3 Helper (any identity-verified user; professional credential optional)
 
@@ -263,11 +265,13 @@ demand (see §6).
 3. **Reach local liquidity.** The product is only useful where enough helpers see
    enough requests. Distance-sorted browsing concentrates attention locally.
    Metric: completion rate (assigned → completed) within a pilot area.
-4. **Create the future monetization surface.** Paid/volunteer labeling, agreed
+4. **Create the future monetization surface.** Per-offer pricing stances
+   (fixed / volunteer / price-after-job), agreed
    offer prices, and the paid-marker checkbox record exactly the data (volume and value
    of paid jobs per category/area) needed to price lead fees or commissions later —
    without operating payments now.
-5. **Serve the community.** Volunteer requests are first-class, not a side case.
+5. **Serve the community.** Volunteering is first-class, not a side case: every
+   offer can be a volunteer offer, on any request.
    This widens adoption beyond commercial transactions and is the product's
    social contribution.
 
@@ -289,7 +293,7 @@ Capabilities the software must provide to enable the goals above, and why:
 | C8 | Rating: requester rates the helper once per completed request (1–5 stars + optional note); helper profiles show average and count | G2 |
 | C9 | Two-kind verification workflow — identity applications (required to transact) and professional-credential applications — with private-storage uploads and an admin review queue (approve/reject + note) | G2 |
 | C10 | Admin moderation: hide a request from browsing, revoke a verification | G2 — trust requires recourse |
-| C11 | Paid-marker checkbox on completed paid requests | G4 |
+| C11 | Paid-marker checkbox on completed requests whose selected offer carries a price | G4 |
 | C12 | Database-level permission enforcement for every capability above — RLS policies, plus unique/check constraints and narrowly-scoped SECURITY DEFINER functions where a rule spans rows or must be atomic | All — trust claims are empty if the data layer doesn't enforce them |
 | C13 | Static emergency-resources page (see §11) | Duty of care; deliberately **not** a business capability |
 
@@ -298,7 +302,8 @@ transition, so all §6 metrics are computable with direct SQL. An in-app
 reports/analytics UI is deliberately out of scope (§10).
 
 Out of scope for MVP (deliberate): real payments, video upload, in-app chat,
-notifications, external geocoding/maps, PostGIS. Each is either a fragile/paid
+notifications, geocoding/address-search APIs, PostGIS (a display-only
+Leaflet + OpenStreetMap map is included — see §10). Each is either a fragile/paid
 external dependency or scope that does not test the core mechanic.
 
 ---
@@ -357,13 +362,15 @@ unverified user can view open requests, but attempting to offer redirects to the
 verification flow of §8.2.
 
 1. A verified helper browses open requests (distance-sorted), opens one, and
-   submits an offer: a message and — on paid requests — their price, or no
+   submits an offer: a message and a pricing stance — a fixed price, no
    price at all (volunteering), or defer pricing until the job is done — the
    final amount is then entered by the helper after both sides confirm
-   completion. Helpers compete on price as well as trust.
+   completion. Any stance is valid on any request; helpers compete on price as
+   well as trust.
    The request's status becomes **has_offers** on the first active offer.
 2. The requester reviews offers side by side — each shows the helper's name,
-   badge, average rating, and message — and **selects one**. Atomically: the
+   badge, average rating, pricing stance (fixed price / volunteer /
+   price-after-job), and message — and **selects one**. Atomically: the
    request becomes **assigned**, the chosen offer becomes *selected*, and all
    other offers become *closed*. The database is never in a partial state; the
    losing offerers see the closed status the next time they view their offers
@@ -378,7 +385,8 @@ verification flow of §8.2.
    When **both** have confirmed, the request becomes **completed**. One-sided
    confirmation leaves it *assigned* with a visible "waiting for the other side"
    indicator.
-5. For paid requests, the requester may tick "paid" — informational only; it does
+5. When the selected offer carries a price (fixed, or entered after the job),
+   the requester may tick "paid" — informational only; it does
    not gate anything.
 
 ### 8.5 Rating
@@ -481,7 +489,7 @@ Notes:
 | Select offer (assign) | Request owner only | Status = has_offers; executed atomically |
 | Confirm completion (requester side) | Request owner only | Status = assigned |
 | Confirm completion (helper side) | Selected helper only | Status = assigned |
-| Mark as paid | Request owner only | Status ∈ {completed, rated}; only when the selected offer carries a price |
+| Mark as paid | Request owner only | Status ∈ {completed, rated}; only when the selected offer carries an agreed amount (a fixed price, or a final price the helper set after the job) — a volunteer job has nothing to mark |
 | Rate | Request owner only | Status = completed; once per request |
 | View rating | Any signed-in user | Status = rated; shown on the helper's profile |
 | View counterpart contact details | Request owner and selected helper only | Status ∈ {assigned, completed, rated}; via a dedicated, narrowly-scoped read path |
@@ -507,11 +515,13 @@ edit is deliberate complexity the MVP avoids.
 ### 9.3 Privacy note on location
 
 Distance sorting requires request coordinates to be readable by signed-in users.
-The MVP accepts this with mitigations: the UI shows only a distance ("2.4 km
-away"), never raw coordinates or an address, and requests carry a location the
-requester explicitly confirms at publish time. Exact-coordinate exposure via the
-API to signed-in users is a known, documented MVP limitation; coordinate rounding
-or server-side distance computation are listed as improvements in the security
+List views show only a distance ("2.4 km away"), and the feed map surfaces
+request locations as pins **by design** — requests carry a location the
+requester explicitly confirms at publish time, knowing it identifies the
+request's place. Profile **home** coordinates follow a stricter rule and remain
+private (readable by their owner only). Exact request-coordinate exposure to
+signed-in users is a known, documented MVP decision; coordinate rounding or
+server-side distance computation are listed as improvements in the security
 document.
 
 The phone number follows a stricter rule than coordinates: it is readable only by
@@ -597,9 +607,10 @@ explicit product decision.
   matrix of §9.2 is enforced in the database. Secrets live in environment
   variables, never in the repository. (Full treatment: security document.)
 - **Availability & independence:** deployed on Vercel with Supabase, publicly
-  reachable by URL. Zero runtime dependence on external APIs beyond
-  Supabase/Vercel — nothing fragile or paid that could break the demo or the
-  deployment.
+  reachable by URL. Beyond Supabase/Vercel, the one third-party runtime
+  dependency is OpenStreetMap raster tiles — display-only, keyless, free; a
+  tile-server outage degrades to a blank map square, never breaks a flow.
+  Nothing fragile or paid that could break the demo or the deployment.
 - **Performance (MVP scale):** list views paginated; images size-limited at
   upload; distance computed client/server-side in code without external calls.
   (Full treatment: scale document.)
@@ -646,7 +657,7 @@ explicit product decision.
 
 | Risk | Mitigation |
 |---|---|
-| Cold start: helpers see no requests, requesters get no offers — compounded by the identity gate, which delays every new user's first contribution | Pilot-area focus; volunteer requests widen the helper pool; seeded, pre-approved demo accounts for presentation; verification is reachable straight from signup and reviewed within hours at pilot scale — the gate adds latency, not a wall |
+| Cold start: helpers see no requests, requesters get no offers — compounded by the identity gate, which delays every new user's first contribution | Pilot-area focus; volunteer offers widen the helper pool; seeded, pre-approved demo accounts for presentation; verification is reachable straight from signup and reviewed within hours at pilot scale — the gate adds latency, not a wall |
 | Manual review queue becomes the bottleneck (every transacting user passes through it) | Acceptable at MVP scale: hours-level turnaround, visible *pending* status (§4.1). Queue length is the first scale signal to watch; semi-automated checks (e.g., SMS OTP) are the roadmap answer in the scale/security documents |
 | Weak identity verification (manual admin approval is not government-grade identity proofing) | Documented openly as an MVP limitation; applies symmetrically to both sides; optional ID photo strengthens review; stronger verification (e.g., document checks) listed in security doc roadmap |
 | Malicious requester lures a helper with a fabricated request (mirror: malicious helper exploits a requester) | Symmetric identity gate (§4.1) — no one transacts without passing human review; phone numbers revealed only after mutual commitment at assignment (§8.4); admin can revoke verification either way; residual physical-world risk documented honestly — no platform eliminates it |

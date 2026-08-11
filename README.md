@@ -9,7 +9,7 @@ identity-verified helpers nearby compete to offer help — paid or volunteer.
 Both sides of every transaction pass admin-reviewed identity verification, and
 helpers are rated after completion.
 
-**Stack:** Next.js 16 (App Router) · TypeScript · Supabase (Postgres + RLS, Auth, Storage) · Tailwind v4 · Vercel
+**Stack:** Next.js 16 (App Router) · TypeScript · Supabase (Postgres + RLS, Auth, Storage) · Tailwind v4 · Vercel · Leaflet + OpenStreetMap (display-only maps, no API key)
 
 ## Documentation
 
@@ -66,6 +66,6 @@ set it on Vercel; no application code reads it.
 
 Every permission is enforced in the database: RLS policies for row access,
 unique/check constraints for cross-row rules, and a small audited set of
-SECURITY DEFINER functions (ten RPCs) for atomic state transitions — the UI and
+SECURITY DEFINER functions (eleven RPCs) for atomic state transitions — the UI and
 server actions only mirror these rules for usability. A crafted API request
 carrying a user's JWT hits exactly the same wall. Details: `docs/03-technical-design.md` §2–§3.

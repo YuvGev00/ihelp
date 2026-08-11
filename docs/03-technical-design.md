@@ -16,7 +16,10 @@ rule it enforces.
 > `final_price` (migrations `0009`–`0011`). Where this document still shows
 > `help_requests.payment_type` or a "charging only on paid requests" offer
 > rule, the migrations supersede it: every request accepts all three offer
-> stances. See `supabase/migrations/0009`–`0011`.
+> stances. See `supabase/migrations/0009`–`0011`. Migration `0012` adds
+> `profiles.avatar_path` (optional avatar; a third, **public** `avatars`
+> bucket); migration `0013` pins `final_price is null` in the offer INSERT
+> policy — `final_price` is written only by the `set_final_price` RPC.
 
 ---
 
@@ -146,8 +149,8 @@ create table public.offers (
     (pricing_mode = 'volunteer' and price is null and final_price is null) or
     (pricing_mode = 'after_job' and price is null)
   ),
-  -- charging (fixed OR after_job) is allowed only on paid requests; volunteering
-  -- anywhere. That is a cross-table rule, enforced in the offers policies (§2).
+  -- any of the three stances is allowed on any request (migration 0011 removed
+  -- the old "charging only on paid requests" cross-table rule).
   -- snapshot set by trigger T4 at insert: /my/offers must render meaningfully
   -- even after the offerer loses SELECT on the parent request (spec §9.2)
   request_title  text not null default '',
@@ -290,8 +293,8 @@ offers and ratings reference the row forever).
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `offers_select` (SELECT) | `helper_id = auth.uid() or exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id = auth.uid())` | Sealed-bid visibility: owner of the offer + owner of the request, nobody else — including admins (§9.2) |
-| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden and (price is null or r.payment_type = 'paid'))` | Verified users only; not on own request; **price only where the requester offered to pay** — a free (null-price) offer is allowed anywhere; only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index) |
-| `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn') and (price is null or <request is paid>)` | Edit or withdraw while active; the price rule holds on edit too. The CHECK's closed set is what stops a helper PATCHing their own offer to `selected` — the only two states a helper can write are the two they own (§9.2). `request_id`, `helper_id`, `created_at` are column-guard-protected (below) — otherwise an UPDATE could *re-point* an active offer at a different request, bypassing every INSERT-time check (own-request, open-status, hidden) |
+| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and final_price is null and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | Verified users only; not on own request; any pricing stance on any request (migration 0011); only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index). **`final_price is null` pins insert** (migration 0013) — without it a crafted after_job insert fabricates the "agreed" amount `mark_paid` coalesces to, bypassing the entire `set_final_price` guard chain |
+| `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn')` | Edit or withdraw while active. The CHECK's closed set is what stops a helper PATCHing their own offer to `selected` — the only two states a helper can write are the two they own (§9.2). `request_id`, `helper_id`, `pricing_mode`, `final_price`, `created_at` are column-guard-protected (below) — otherwise an UPDATE could *re-point* an active offer at a different request, bypassing every INSERT-time check (own-request, open-status, hidden), or write `final_price` directly instead of via `set_final_price` |
 
 No DELETE — withdrawn offers stay as history (and as re-offer bookkeeping).
 
@@ -356,7 +359,7 @@ accepted limitation documented in architecture §5.
 
 ## 3. Database Functions — full bodies (the privileged-code inventory)
 
-Conventions for all ten: `security definer set search_path = public`, execute
+Conventions for all eleven: `security definer set search_path = public`, execute
 revoked from `public`/`anon` and granted to `authenticated`, permission checks
 first, business errors raised with stable codes the app maps to Hebrew
 (`P0001` + message in `not_found | forbidden | invalid_state | …`).
@@ -628,24 +631,57 @@ returns void
 language plpgsql security definer set search_path = public as $$
 declare
   v_req public.help_requests%rowtype;
-  v_price numeric;
+  v_offer public.offers%rowtype;
+  v_agreed numeric;
 begin
-  select * into v_req from public.help_requests
-    where id = p_request_id for update;
+  select * into v_req from public.help_requests where id = p_request_id for update;
   if not found or v_req.requester_id <> auth.uid() then
     raise exception 'not_found';   -- error-ordering rule
   end if;
-  -- keyed to the AGREED price (the selected offer's): a volunteered job has
-  -- nothing to mark as paid, even on a payment_type='paid' request
-  select price into v_price from public.offers where id = v_req.assigned_offer_id;
+  -- keyed to the AGREED amount: a fixed quote OR a set after_job final price
+  -- (a volunteered job has nothing to mark as paid)
+  select * into v_offer from public.offers where id = v_req.assigned_offer_id;
+  v_agreed := coalesce(v_offer.price, v_offer.final_price);  -- fixed OR set after_job
   if v_req.status not in ('completed','rated')
-     or v_price is null or v_req.is_paid then
+     or v_agreed is null or v_req.is_paid then
     raise exception 'invalid_state';
   end if;
   update public.help_requests set is_paid = true where id = p_request_id;
 end $$;
 
--- 3.10 The only read RPC: counterpart contact, post-assignment, parties only.
+-- 3.10 After-job pricing (migration 0010): the selected helper of an
+-- `after_job` offer sets the final amount once the request is completed
+-- (or rated — the requester may still mark paid). Guarded: selected helper
+-- only, after_job only, once.
+create or replace function public.set_final_price(p_request_id uuid, p_price numeric)
+returns void
+language plpgsql security definer set search_path = public as $$
+declare
+  v_req public.help_requests%rowtype;
+  v_offer public.offers%rowtype;
+begin
+  if p_price is null or p_price <= 0 or p_price > 99999.99 then
+    raise exception 'invalid_price';
+  end if;
+
+  select * into v_req from public.help_requests where id = p_request_id for update;
+  if not found then raise exception 'not_found'; end if;
+
+  select * into v_offer from public.offers where id = v_req.assigned_offer_id;
+  -- error-ordering rule: only the selected helper can price; anyone else 404s
+  if v_offer.helper_id is null or v_offer.helper_id <> auth.uid() then
+    raise exception 'not_found';
+  end if;
+  if v_req.status not in ('completed','rated')
+     or v_offer.pricing_mode <> 'after_job'
+     or v_offer.final_price is not null then
+    raise exception 'invalid_state';
+  end if;
+
+  update public.offers set final_price = p_price where id = v_offer.id;
+end $$;
+
+-- 3.11 The only read RPC: counterpart contact, post-assignment, parties only.
 create or replace function public.get_counterpart_contact(p_request_id uuid)
 returns table (display_name text, phone text)
 language plpgsql security definer set search_path = public as $$
@@ -750,6 +786,8 @@ begin
     if new.request_id is distinct from old.request_id
        or new.helper_id is distinct from old.helper_id
        or new.request_title is distinct from old.request_title
+       or new.pricing_mode is distinct from old.pricing_mode
+       or new.final_price is distinct from old.final_price   -- set_final_price RPC only
        or new.created_at is distinct from old.created_at then
       raise exception 'forbidden';
     end if;
@@ -841,6 +879,7 @@ type ActionResult<T = void> =
 | `photos_required` / `too_many_photos` | Photo count out of 1–5 | "יש לצרף 1–5 תמונות" |
 | `photo_not_uploaded` | A photo path has no uploaded object behind it | "העלאת התמונות נכשלה — נסו שוב" |
 | `location_required` | Request published without coordinates | "יש לאשר מיקום לבקשה" |
+| `invalid_price` | Final price out of range (`set_final_price`) | "סכום לא תקין" |
 | `note_required` | Admin rejected without a reason | "דחייה מחייבת נימוק" |
 | *(RLS denial / no rows)* | Permission denied at policy level | Same generic "אין הרשאה" — deliberately indistinguishable from not-found |
 
@@ -883,7 +922,8 @@ operational):
 | `assigned`: set own completion flag | Owner / selected helper | `confirm_completion` (side from `auth.uid()`) |
 | `assigned → completed` | System (both flags true) | Same RPC, same transaction |
 | `completed → rated` | Owner | `submit_rating` (insert + flip, atomic) |
-| `is_paid` marker | Owner | `mark_paid` (post-completion, paid type, once) |
+| `after_job` final price | Selected helper | `set_final_price` (completed/rated, after_job offer, once) |
+| `is_paid` marker | Owner | `mark_paid` (post-completion, agreed amount = `coalesce(price, final_price)`, once) |
 | any pre-completed → `cancelled` | Owner | `cancel_request` (closes live offers) |
 | `is_hidden` flip | Admin | `set_request_hidden` |
 | Verification decide / revoke | Admin | `review_application` / `revoke_verification` |
@@ -914,7 +954,8 @@ C4 fallback). The viewer's own location comes from their `profiles_private` row
 | `VerificationForm` | Client | Identity/professional application incl. doc upload |
 | `AdminQueue`, `ModerationList` | Server + client actions | Approve/reject with note; hide/unhide; revoke |
 | `GeolocationPrompt` | Client | One-time capture on `/profile`; writes via `updateProfile` |
-| `EmptyState`, `StatusChip`, `Badge` | Server | Shared UI vocabulary |
+| `MapView`, `RequestsMap`/`FeedMap`, `MapPicker` | Client | Leaflet maps: request location, feed pins + popups, click-to-choose location. Tiles are the one third-party runtime dependency — OpenStreetMap raster tiles: display-only, keyless, free; a tile-server outage degrades to a blank map square, never breaks a flow |
+| `EmptyState`, `StatusChip`, `OfferPriceChip`, `Badge` | Server | Shared UI vocabulary; `OfferPriceChip` renders an offer's pricing stance (fixed price / volunteer / after-job) |
 
 Client components are leaves; every page is a Server Component that fetches data
 and passes plain props down. No context providers except the RTL/i18n-free
@@ -924,7 +965,7 @@ strings module (plain imports).
 
 ## 8. State Management
 
-- **URL = list state:** feed filters (category, paid/volunteer) and page number
+- **URL = list state:** feed filters (category, distance) and page number
   are search params — shareable, back-button-correct, zero client cache.
 - **Forms:** `useActionState(action)` per form; pending state from
   `useFormStatus`. After success, `revalidatePath` (concrete paths) refreshes
@@ -953,8 +994,8 @@ the same bounds for instant feedback. DB constraints (§1.2) are the last line:
 | `profileSchema` | display_name 1–40; phone `^0\d{8,9}$` (optional until verification); lat/lng ranges, both-or-neither |
 | `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; phone required here (`^0\d{8,9}$` — mirrored by the `identity_requires_phone` CHECK); doc_path optional |
 | `professionalApplicationSchema` | doc_path required (mirrored by the `professional_requires_doc` CHECK) |
-| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; payment_type (intent only — no amount); lat/lng required (NOT NULL columns); photo paths 1–5 |
-| `offerSchema` | message 5–1000; pricingMode ∈ {fixed, volunteer, after_job}; price required iff mode=fixed (0 < price ≤ 99999.99); charging modes on volunteer requests are policy-denied |
+| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; lat/lng required (NOT NULL columns); photo paths 1–5 |
+| `offerSchema` | message 5–1000; pricingMode ∈ {fixed, volunteer, after_job}; price required iff mode=fixed (0 < price ≤ 99999.99) |
 | `finalPriceSchema` | 0 < price ≤ 99999.99 — the after_job final amount set post-completion by the selected helper |
 | `ratingSchema` | stars int 1–5; note ≤ 500 |
 | `reviewSchema` (admin) | note required on rejection, ≤ 500 |
@@ -985,8 +1026,8 @@ but a request row without photos can never exist (RPC).
 ## 11. UX Design (central experience)
 
 - **The feed is the product's face:** card = photo thumbnail, title, category
-  chip, paid/volunteer intent chip, distance chip, time-ago. One tap to
-  detail. Filters as chips, not menus. RTL, `he` locale dates.
+  chip, distance chip, time-ago. One tap to detail. Filters as chips, not
+  menus. RTL, `he` locale dates.
 - **The request detail adapts to the viewer** (same URL, role-dependent panels):
   owner sees offers + assign buttons; a verified helper sees the offer form (or
   their existing offer + edit/withdraw); the assigned pair see the contact card
@@ -1014,36 +1055,44 @@ app/
   (public)/
     login/page.tsx  signup/page.tsx  emergency/page.tsx  page.tsx
   (app)/
-    layout.tsx                      # session read, nav, onboarding redirect
+    layout.tsx                      # session read, nav
     error.tsx  not-found.tsx        # route-group boundaries (§10)
-    requests/page.tsx               # feed
-    requests/loading.tsx            # skeletons (§11)
-    requests/new/page.tsx
-    requests/[id]/page.tsx
-    requests/[id]/loading.tsx
-    my/requests/page.tsx  my/offers/page.tsx
-    helpers/[id]/page.tsx
-    verification/page.tsx
-    admin/page.tsx                  # inside the shell: shares nav/session/error
+    profile/page.tsx                # onboarding target — outside (onboarded)
+                                    # to avoid a redirect loop
+    (onboarded)/                    # onboarding gate group (redirects empty
+      layout.tsx                    # display name → /profile)
+      requests/page.tsx             # feed
+      requests/loading.tsx          # skeletons (§11)
+      requests/new/page.tsx
+      requests/[id]/page.tsx
+      requests/[id]/loading.tsx
+      my/requests/page.tsx  my/offers/page.tsx
+      helpers/[id]/page.tsx
+      verification/page.tsx
+      admin/page.tsx                # inside the shell: shares nav/session/error
                                     # boundary; RLS + in-page is_admin gate 404s
                                     # non-admins
-  (app)/profile/page.tsx            # onboarding target — outside (onboarded)
   layout.tsx                        # <html dir="rtl" lang="he"> only
 actions/
-  auth.ts  profile.ts  verification.ts  requests.ts  offers.ts  ratings.ts  admin.ts
+  auth.ts  profile.ts  verification.ts  requests.ts  offers.ts  ratings.ts
+  admin.ts  helpers.ts
 components/                         # §7 table
 lib/
   supabase/{server,client,middleware}.ts
   geo.ts  strings.ts  categories.ts  errors.ts   # RPC-code → Hebrew mapping
+  leaflet-icon.ts                   # Leaflet marker-icon asset wiring
   validation/{auth,profile,verification,request,offer,rating}.ts
 supabase/
   migrations/
     0001_enums.sql  0002_tables.sql  0003_indexes.sql
     0004_functions.sql  0005_triggers.sql  0006_policies.sql
-    0007_storage.sql
+    0007_storage.sql  0008_grants.sql  0009_offer_pricing.sql
+    0010_offer_pricing_mode.sql  0011_drop_payment_type.sql
+    0012_avatars.sql  0013_pin_final_price_insert.sql
 scripts/
   seed.ts                           # demo data — see below
-middleware.ts                       # session refresh; matcher excludes /emergency
+proxy.ts                            # session refresh (Next 16 name for root
+                                    # middleware); matcher excludes /emergency
 ```
 
 **Seeding (demo/dev data):** auth users cannot be reliably created by plain SQL
