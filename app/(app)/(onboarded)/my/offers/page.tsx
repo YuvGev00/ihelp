@@ -33,7 +33,7 @@ export default async function MyOffersPage() {
   const OFFER_STYLES: Record<string, string> = {
     active: "bg-sky-100 text-sky-800",
     selected: "bg-mint text-brand",
-    closed: "bg-[#f2f5f4] text-muted",
+    closed: "bg-tint text-muted",
     withdrawn: "bg-red-100 text-red-700",
   };
 

@@ -157,7 +157,7 @@ export default async function RequestDetailPage({
           ) : (
             <PublicStatusChip status={request.status} />
           )}
-          <span className="chip bg-[#f2f5f4] text-body">
+          <span className="chip bg-tint text-body">
             {categoryLabel(request.category)}
           </span>
           {request.is_hidden && <HiddenChip />}
@@ -176,16 +176,16 @@ export default async function RequestDetailPage({
       {/* Photos — fixed-aspect boxes so any image dimensions render cleanly */}
       {signed && signed.length > 0 && (
         <div className="flex gap-2 overflow-x-auto">
-          {signed.map((s) =>
+          {signed.map((s, i) =>
             s.signedUrl ? (
               <div
                 key={s.path}
-                className="aspect-video h-48 shrink-0 overflow-hidden rounded-2xl bg-[#e5efeb]"
+                className="aspect-video h-48 shrink-0 overflow-hidden rounded-2xl bg-tile"
               >
                 {/* eslint-disable-next-line @next/next/no-img-element */}
                 <img
                   src={s.signedUrl}
-                  alt=""
+                  alt={`תמונה ${i + 1} — ${request.title}`}
                   className="h-full w-full object-cover"
                 />
               </div>
@@ -201,7 +201,7 @@ export default async function RequestDetailPage({
       {/* Location — display-only OpenStreetMap; the distance chip elsewhere is
           the dependency-free source of truth, so the map is purely additive. */}
       <section>
-        <h2 className="mb-2 text-sm font-bold text-[#35433d]">
+        <h2 className="mb-2 text-sm font-bold text-label">
           {S.requests.mapTitle}
         </h2>
         <MapView lat={request.lat} lng={request.lng} />
@@ -310,7 +310,7 @@ export default async function RequestDetailPage({
             return isSelectedHelper ? (
               <SetFinalPriceForm requestId={id} />
             ) : (
-              <p className="rounded-2xl border border-[#f5e6bf] bg-[#fff8e6] p-3 text-sm text-[#a16207]">
+              <p className="rounded-2xl border border-price-border bg-price-bg p-3 text-sm text-price">
                 {S.offers.awaitingFinalPrice}
               </p>
             );

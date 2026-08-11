@@ -19,17 +19,21 @@
   /* Neutrals */
   --color-canvas: #f7faf9; /* app background */
   --color-ink: #0f1f1a; /* primary text (near-black green) */
+  --color-label: #35433d; /* field labels */
   --color-body: #54635d; /* body copy */
-  --color-muted: #8a978f; /* secondary/meta text */
+  --color-muted: #5f6d66; /* secondary/meta text — WCAG-AA on white/canvas */
   --color-line: #e9edeb; /* card borders */
   --color-field: #dde3e0; /* input borders */
+  --color-tile: #e5efeb; /* image/map placeholder fill */
+  --color-tint: #f2f5f4; /* secondary-button hover / subtle surfaces */
 
   /* Accents */
   --color-star: #f0a020; /* rating stars */
   --color-pro: #2563cc; /* professional badge */
   --color-pro-bg: #eef4ff;
-  --color-price: #c07a10; /* paid price */
-  --color-price-bg: #fff5e6;
+  --color-price: #a16207; /* agreed price text (AA on price-bg) */
+  --color-price-bg: #fff8e6;
+  --color-price-border: #f5e6bf;
 
   /* Elevation */
   --shadow-card: 0 8px 20px -16px rgba(6, 67, 47, 0.55);
@@ -49,7 +53,7 @@
 /* Small shared form/UI vocabulary — the UI is small enough to own (arch §3). */
 @layer components {
   .field-label {
-    @apply block text-[13px] font-bold text-[#35433d] mb-1.5;
+    @apply block text-[13px] font-bold text-label mb-1.5;
   }
   .field-input {
     @apply w-full rounded-xl border border-field bg-white px-3.5 py-3 text-sm

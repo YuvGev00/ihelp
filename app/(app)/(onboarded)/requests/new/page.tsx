@@ -33,7 +33,7 @@ export default async function NewRequestPage() {
 
   return (
     <div className="mx-auto max-w-lg space-y-4">
-      <h1 className="text-2xl font-bold">{S.requests.newRequest}</h1>
+      <h1 className="text-2xl font-extrabold text-ink">{S.requests.newRequest}</h1>
       <NewRequestForm profileLocation={profileLocation} />
     </div>
   );

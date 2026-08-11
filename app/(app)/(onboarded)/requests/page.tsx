@@ -176,7 +176,7 @@ export default async function RequestsFeedPage({
       {/* Distance filter — range chips. Disabled without a viewer location
           (distance can't be computed); the hint links to the profile. */}
       <div className="flex flex-wrap items-center gap-2 text-sm">
-        <span className="font-bold text-[#35433d]">{S.requests.distanceLabel}:</span>
+        <span className="font-bold text-label">{S.requests.distanceLabel}:</span>
         {viewer ? (
           <>
             <Link
@@ -229,7 +229,7 @@ export default async function RequestsFeedPage({
                   className="card flex gap-3 p-3 transition hover:-translate-y-0.5 hover:border-brand/40"
                 >
                   {/* Image-left thumbnail (mint placeholder when none) */}
-                  <div className="h-[82px] w-[82px] shrink-0 overflow-hidden rounded-xl bg-[#e5efeb]">
+                  <div className="h-[82px] w-[82px] shrink-0 overflow-hidden rounded-xl bg-tile">
                     {photo && (
                       // eslint-disable-next-line @next/next/no-img-element
                       <img src={photo} alt="" className="h-full w-full object-cover" />

@@ -85,7 +85,7 @@ export function MapPicker({
     <div>
       <div
         ref={containerRef}
-        className="z-0 h-56 w-full overflow-hidden rounded-xl bg-[#f2f5f4]"
+        className="z-0 h-56 w-full overflow-hidden rounded-xl bg-tint"
       />
       {ready && (
         <p className="mt-1 text-xs text-muted">{S.requests.mapPickerHint}</p>

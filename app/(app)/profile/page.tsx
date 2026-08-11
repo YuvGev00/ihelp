@@ -38,7 +38,7 @@ export default async function ProfilePage() {
   return (
     <div className="mx-auto max-w-lg space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-2xl font-bold">{S.profile.title}</h1>
+        <h1 className="text-2xl font-extrabold text-ink">{S.profile.title}</h1>
         <Badge
           verified={profile?.is_identity_verified}
           professional={profile?.is_professional}
@@ -55,7 +55,7 @@ export default async function ProfilePage() {
           appears next to their offers, so they can track their reputation. */}
       {!isOnboarding && (
         <section className="card flex items-center justify-between">
-          <h2 className="font-semibold">{S.profile.myRating}</h2>
+          <h2 className="font-extrabold text-ink">{S.profile.myRating}</h2>
           <Stars value={ratingAvg} count={ratingCount} />
         </section>
       )}

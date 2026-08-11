@@ -27,13 +27,19 @@ export function NavLinks({ isAdmin }: { isAdmin: boolean }) {
   return (
     <>
       {LINKS.map((l) => (
-        <Link key={l.href} href={l.href} className={cls(l.href)}>
+        <Link
+          key={l.href}
+          href={l.href}
+          className={cls(l.href)}
+          aria-current={isActive(l.href) ? "page" : undefined}
+        >
           {l.label}
         </Link>
       ))}
       {isAdmin && (
         <Link
           href="/admin"
+          aria-current={pathname.startsWith("/admin") ? "page" : undefined}
           className={
             pathname.startsWith("/admin")
               ? "font-semibold text-purple-700 underline underline-offset-4 decoration-2"

@@ -23,7 +23,7 @@ function latestByKind(apps: Application[], kind: Application["kind"]) {
 function ApplicationStatus({ app }: { app: Application }) {
   if (app.status === "pending") {
     return (
-      <p className="rounded-2xl border border-[#f5e6bf] bg-[#fff8e6] p-3 text-sm font-semibold text-[#a16207]">
+      <p className="rounded-2xl border border-price-border bg-price-bg p-3 text-sm font-semibold text-price">
         ● {S.verification.pending}
       </p>
     );

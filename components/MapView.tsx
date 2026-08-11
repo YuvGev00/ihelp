@@ -63,7 +63,7 @@ export function MapView({
   return (
     <div
       ref={containerRef}
-      className={`${className} z-0 overflow-hidden bg-stone-100`}
+      className={`${className} z-0 overflow-hidden bg-tile`}
       role="img"
       aria-label="מפת מיקום הבקשה"
     />

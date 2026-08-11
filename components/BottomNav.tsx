@@ -95,7 +95,8 @@ function Tab({
   return (
     <Link
       href={href}
-      className={`flex flex-1 flex-col items-center gap-1 ${on ? "text-brand" : "text-[#94a3ad]"}`}
+      aria-current={on ? "page" : undefined}
+      className={`flex flex-1 flex-col items-center gap-1 ${on ? "text-brand" : "text-muted"}`}
     >
       <Icon />
       <span className={`whitespace-nowrap text-[10px] ${on ? "font-bold" : "font-semibold"}`}>

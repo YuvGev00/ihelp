@@ -39,7 +39,7 @@ export default async function HelperProfilePage({
         <div className="flex items-center gap-4">
           <Avatar name={profile.display_name} path={profile.avatar_path} size={64} />
           <div className="space-y-2">
-            <h1 className="text-2xl font-bold">{profile.display_name}</h1>
+            <h1 className="text-2xl font-extrabold text-ink">{profile.display_name}</h1>
             <div className="flex flex-wrap items-center gap-2">
               <Badge
                 verified={profile.is_identity_verified}
@@ -52,7 +52,7 @@ export default async function HelperProfilePage({
       </div>
 
       <section className="space-y-2">
-        <h2 className="text-lg font-semibold">
+        <h2 className="text-lg font-extrabold text-ink">
           {S.helpers.ratingCount} ({count})
         </h2>
         {!count ? (

@@ -79,7 +79,11 @@ export function Stars({
   const rounded = Math.round(value);
   return (
     <span className="inline-flex items-center gap-1 text-sm">
-      <span className="text-star" aria-label={`${value.toFixed(1)} ${S.lifecycle.stars}`}>
+      <span
+        className="text-star"
+        role="img"
+        aria-label={`${value.toFixed(1)} ${S.lifecycle.stars}`}
+      >
         {"★".repeat(rounded)}
         {"☆".repeat(5 - rounded)}
       </span>
@@ -95,14 +99,14 @@ const STATUS_STYLES: Record<string, string> = {
   open: "bg-mint text-brand",
   has_offers: "bg-sky-100 text-sky-800",
   assigned: "bg-[#eef2ff] text-[#4f5bd5]",
-  completed: "bg-[#f2f5f4] text-body",
-  rated: "bg-[#fef3c7] text-[#a16207]",
+  completed: "bg-tint text-body",
+  rated: "bg-price-bg text-price",
   cancelled: "bg-red-100 text-red-700",
 };
 
 export function StatusChip({ status }: { status: string }) {
   return (
-    <span className={`chip gap-1 ${STATUS_STYLES[status] ?? "bg-[#f2f5f4] text-body"}`}>
+    <span className={`chip gap-1 ${STATUS_STYLES[status] ?? "bg-tint text-body"}`}>
       <span aria-hidden className="text-[8px] leading-none">●</span>
       {S.requests.status[status] ?? status}
     </span>
@@ -143,7 +147,7 @@ export function OfferPriceChip({ offer }: { offer: OfferPricing }) {
   const isFree = offer.pricing_mode === "volunteer";
   return (
     <span
-      className={`chip ${isFree ? "bg-teal-100 text-teal-800" : "bg-amber-100 text-amber-800"}`}
+      className={`chip ${isFree ? "bg-mint text-brand" : "bg-price-bg text-price"}`}
     >
       {offerPriceText(offer)}
     </span>

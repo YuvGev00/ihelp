@@ -5,7 +5,7 @@ export const dynamic = "force-static";
 
 export default function LandingPage() {
   return (
-    <div className="min-h-screen bg-canvas">
+    <main className="min-h-screen bg-canvas">
       {/* Hero — pine→brand gradient, the reversal stated boldly, verification
           teased as the trust anchor. Decorative mint orbs add depth. */}
       <section className="relative overflow-hidden bg-gradient-to-b from-pine to-brand text-white">
@@ -110,6 +110,6 @@ export default function LandingPage() {
           </Link>
         </p>
       </section>
-    </div>
+    </main>
   );
 }
