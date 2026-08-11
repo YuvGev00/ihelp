@@ -1,0 +1,30 @@
+# Keep-alive: pings the app's /api/health route on a schedule so the Supabase
+# free-tier database registers activity and does not auto-pause after ~7 days
+# idle. Runs on GitHub's free runners — no server, no local machine, no secrets.
+#
+# The health route makes one trivial read against Supabase (see
+# app/api/health/route.ts), so this counts as real database activity.
+name: keepalive
+
+on:
+  schedule:
+    # Every 3 days at 06:00 UTC — comfortably inside Supabase's ~7-day window.
+    - cron: "0 6 */3 * *"
+  # Lets you trigger it by hand from the Actions tab to confirm it works.
+  workflow_dispatch:
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping health endpoint
+        run: |
+          echo "Pinging iHelp health endpoint…"
+          # --fail makes curl exit non-zero on a 4xx/5xx so a broken deploy
+          # surfaces as a failed workflow run (you get a GitHub email).
+          # Retry a few times in case the DB is waking from a cold start.
+          curl --fail --show-error --silent --retry 5 --retry-delay 20 \
+            --max-time 60 \
+            https://ihelp-roan.vercel.app/api/health
+          echo ""
+          echo "Health check passed."
