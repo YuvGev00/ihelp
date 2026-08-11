@@ -35,7 +35,7 @@ test("core marketplace loop through the UI", async ({ browser }) => {
   // and a distance filter (Dana has a saved location).
   await requester.goto("/requests");
   await expect(requester.locator(".leaflet-container")).toBeVisible();
-  await requester.getByRole("link", { name: 'עד 5 ק"מ' }).click();
+  await requester.getByRole("link", { name: "עד 5 ק״מ" }).click();
   await expect(requester).toHaveURL(/dist=5/);
   await expect(requester.locator(".leaflet-container")).toBeVisible();
 
