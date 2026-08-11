@@ -368,4 +368,18 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
     });
     expect(volWithPrice.error).not.toBeNull();
   }, 30_000);
+
+  it("D10: a helper cannot INSERT an offer with a pre-set final_price (security)", async () => {
+    // Regression for the final_price INSERT bypass: fabricating final_price at
+    // offer time would defeat the set_final_price RPC and poison mark_paid.
+    const requestId = await createRequestFixture(requester);
+    const forged = await helperA.client.from("offers").insert({
+      request_id: requestId,
+      helper_id: helperA.id,
+      message: "מנסה לזייף מחיר סופי",
+      pricing_mode: "after_job",
+      final_price: 88888,
+    });
+    expect(forged.error).not.toBeNull();
+  }, 30_000);
 });
