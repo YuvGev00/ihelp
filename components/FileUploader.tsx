@@ -16,18 +16,27 @@ export function FileUploader({
   maxFiles = 1,
   label,
   hint,
+  onBusyChange,
 }: {
   bucket: "request-photos" | "verification-docs" | "avatars";
   name: string; // hidden input name carrying uploaded path(s)
   maxFiles?: number;
   label: string;
   hint?: string;
+  // Lets the parent form disable its submit button while an upload is running,
+  // so a form is never submitted with a half-uploaded (missing) file path.
+  onBusyChange?: (busy: boolean) => void;
 }) {
   const [paths, setPaths] = useState<string[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const [busy, setBusy] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
   const inputId = `file-${name}`;
+
+  const [busy, setBusyState] = useState(false);
+  const setBusy = (value: boolean) => {
+    setBusyState(value);
+    onBusyChange?.(value);
+  };
 
   // Removal drops the path from the form; the orphaned storage object is an
   // accepted, bounded cost (design 03 §10) — better than retyping the form.

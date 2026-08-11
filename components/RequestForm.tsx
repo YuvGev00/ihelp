@@ -157,6 +157,7 @@ export function NewRequestForm({
   profileLocation: { lat: number; lng: number } | null;
 }) {
   const [state, formAction, pending] = useActionState(createRequest, null);
+  const [uploading, setUploading] = useState(false);
   const fieldErrors = state && !state.ok ? state.fieldErrors : undefined;
 
   return (
@@ -168,6 +169,7 @@ export function NewRequestForm({
         maxFiles={5}
         label={S.requests.photos}
         hint={S.requests.photosHint}
+        onBusyChange={setUploading}
       />
       {fieldErrors?.photoPaths && (
         <p className="field-error">{fieldErrors.photoPaths}</p>
@@ -179,7 +181,11 @@ export function NewRequestForm({
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>
       )}
-      <button type="submit" disabled={pending} className="btn-primary w-full">
+      <button
+        type="submit"
+        disabled={pending || uploading}
+        className="btn-primary w-full"
+      >
         {pending ? S.common.loading : S.requests.publish}
       </button>
     </form>
@@ -203,7 +209,7 @@ export function EditRequestForm({
 
   return (
     <form action={formAction} className="card space-y-4">
-      <h2 className="font-semibold">{S.requests.edit}</h2>
+      <h2 className="font-extrabold text-ink">{S.requests.edit}</h2>
       <CoreFields defaults={defaults} fieldErrors={fieldErrors} />
       {state && !state.ok && state.formError && (
         <p className="field-error">{state.formError}</p>

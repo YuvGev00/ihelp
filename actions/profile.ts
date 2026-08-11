@@ -34,6 +34,18 @@ export async function updateProfile(
     profileUpdate.avatar_path = parsed.data.avatarPath || null;
   }
 
+  // A saved phone cannot be removed (DB column guard), only changed. Detect a
+  // clear-attempt and report it instead of a false "saved" (the guard would
+  // reject the null write anyway, but silently).
+  const { data: currentPriv } = await supabase
+    .from("profiles_private")
+    .select("phone")
+    .eq("user_id", user.id)
+    .single();
+  if (currentPriv?.phone && !parsed.data.phone) {
+    return { ok: false, fieldErrors: { phone: S_PHONE_CANNOT_REMOVE } };
+  }
+
   // Silent-denial pattern: USING-filtered updates return zero rows, not errors.
   const { data, error } = await supabase
     .from("profiles")
@@ -54,6 +66,9 @@ export async function updateProfile(
   revalidatePath("/profile");
   return { ok: true };
 }
+
+const S_PHONE_CANNOT_REMOVE =
+  "לא ניתן להסיר מספר טלפון לאחר שנשמר — ניתן רק לעדכן אותו";
 
 /** Persists the browser-captured location; the server row is the source of truth. */
 export async function updateLocation(

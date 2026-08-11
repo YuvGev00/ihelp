@@ -1,11 +1,12 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useActionState } from "react";
 import {
   reviewApplication,
   setRequestHidden,
   revokeVerification,
 } from "@/actions/admin";
+import { useConfirmedTransition } from "@/components/LifecycleActions";
 import { S } from "@/lib/strings";
 
 export function ReviewForm({ applicationId }: { applicationId: string }) {
@@ -71,19 +72,20 @@ export function HideToggle({
   requestId: string;
   hidden: boolean;
 }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, error, run } = useConfirmedTransition(null, () =>
+    setRequestHidden(requestId, !hidden)
+  );
   return (
-    <button
-      disabled={pending}
-      onClick={() =>
-        startTransition(async () => {
-          await setRequestHidden(requestId, !hidden);
-        })
-      }
-      className={hidden ? "btn-secondary" : "btn-danger"}
-    >
-      {hidden ? S.admin.unhide : S.admin.hide}
-    </button>
+    <span>
+      <button
+        disabled={pending}
+        onClick={run}
+        className={hidden ? "btn-secondary" : "btn-danger"}
+      >
+        {pending ? S.common.loading : hidden ? S.admin.unhide : S.admin.hide}
+      </button>
+      {error && <span className="field-error block">{error}</span>}
+    </span>
   );
 }
 
@@ -94,19 +96,18 @@ export function RevokeButton({
   userId: string;
   kind: "identity" | "professional";
 }) {
-  const [pending, startTransition] = useTransition();
+  const { pending, error, run } = useConfirmedTransition(
+    S.admin.revokeConfirm,
+    () => revokeVerification(userId, kind)
+  );
   return (
-    <button
-      disabled={pending}
-      onClick={() => {
-        if (!window.confirm(S.admin.revokeConfirm)) return;
-        startTransition(async () => {
-          await revokeVerification(userId, kind);
-        });
-      }}
-      className="btn-danger"
-    >
-      {S.admin.revoke} ({S.admin.kind[kind]})
-    </button>
+    <span>
+      <button disabled={pending} onClick={run} className="btn-danger">
+        {pending
+          ? S.common.loading
+          : `${S.admin.revoke} (${S.admin.kind[kind]})`}
+      </button>
+      {error && <span className="field-error block">{error}</span>}
+    </span>
   );
 }

@@ -40,13 +40,18 @@ export function MapPicker({
         attribution: "© OpenStreetMap",
       }).addTo(map);
 
-      const place = (lat: number, lng: number) => {
+      const placeMarker = (lat: number, lng: number) => {
         if (markerRef.current) markerRef.current.setLatLng([lat, lng]);
         else markerRef.current = L.marker([lat, lng]).addTo(map);
-        onChange({ lat, lng });
       };
-      if (initial) place(initial.lat, initial.lng);
-      map.on("click", (e) => place(e.latlng.lat, e.latlng.lng));
+      // Initial pin is display-only — do NOT fire onChange (the parent already
+      // holds this value; firing it would loop with the map-sync effect below).
+      if (initial) placeMarker(initial.lat, initial.lng);
+      // A user click is a real choice → move the pin AND report it.
+      map.on("click", (e) => {
+        placeMarker(e.latlng.lat, e.latlng.lng);
+        onChange({ lat: e.latlng.lat, lng: e.latlng.lng });
+      });
 
       mapRef.current = map;
       setReady(true);
@@ -58,6 +63,23 @@ export function MapPicker({
     };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  // Keep the pin in sync when the parent changes `initial` after mount
+  // (e.g. the GPS "confirm current location" button). Display-only: no onChange.
+  useEffect(() => {
+    let cancelled = false;
+    if (!initial || !mapRef.current) return;
+    import("leaflet").then((L) => {
+      const map = mapRef.current;
+      if (cancelled || !map) return;
+      if (markerRef.current) markerRef.current.setLatLng([initial.lat, initial.lng]);
+      else markerRef.current = L.marker([initial.lat, initial.lng]).addTo(map);
+      map.setView([initial.lat, initial.lng], 15);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [initial?.lat, initial?.lng]); // eslint-disable-line react-hooks/exhaustive-deps
 
   return (
     <div>

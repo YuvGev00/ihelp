@@ -29,9 +29,15 @@ function ApplicationStatus({ app }: { app: Application }) {
     );
   }
   if (app.status === "rejected" || app.status === "revoked") {
+    // A revoked verification was approved and later cancelled — not a failed
+    // application; say so honestly rather than "your request was rejected".
     return (
       <div className="rounded-2xl border border-red-200 bg-red-50 p-3 text-sm text-red-900">
-        <p className="font-bold">{S.verification.rejected}</p>
+        <p className="font-bold">
+          {app.status === "revoked"
+            ? S.verification.revoked
+            : S.verification.rejected}
+        </p>
         {app.admin_note && (
           <p>
             {S.verification.rejectedNote}: {app.admin_note}

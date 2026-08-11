@@ -1,6 +1,7 @@
 "use client";
 
 import { useActionState, useState, useTransition } from "react";
+import { useRouter } from "next/navigation";
 import {
   assignOffer,
   cancelRequest,
@@ -12,14 +13,29 @@ import { setFinalPrice } from "@/actions/offers";
 import { StarsInput } from "@/components/OfferForm";
 import { S } from "@/lib/strings";
 
-function useConfirmedTransition(confirmMessage: string | null, fn: () => Promise<{ ok: boolean; formError?: string }>) {
+/**
+ * Runs a server action inside a transition, optionally behind a confirm dialog,
+ * and surfaces its formError so no failure is silent. On failure it also
+ * refreshes the route so a stale server-rendered view (e.g. an offer the
+ * requester just assigned out from under the helper) re-syncs.
+ */
+export function useConfirmedTransition(
+  confirmMessage: string | null,
+  fn: () => Promise<{ ok: boolean; formError?: string }>
+) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const router = useRouter();
   const run = () => {
     if (confirmMessage && !window.confirm(confirmMessage)) return;
     startTransition(async () => {
       const result = await fn();
-      setError(result.ok ? null : (result.formError ?? null));
+      if (result.ok) {
+        setError(null);
+      } else {
+        setError(result.formError ?? null);
+        router.refresh();
+      }
     });
   };
   return { pending, error, run };

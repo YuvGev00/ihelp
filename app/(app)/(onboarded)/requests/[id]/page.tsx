@@ -352,10 +352,12 @@ export default async function RequestDetailPage({
           {!liveOffers.length ? (
             <EmptyState
               message={
-                ["open", "has_offers"].includes(request.status) &&
-                !request.is_hidden
-                  ? S.offers.noOffersYet
-                  : S.offers.noOffersFinal
+                request.status === "cancelled" && (offers ?? []).length > 0
+                  ? S.offers.offersClosedCancelled
+                  : ["open", "has_offers"].includes(request.status) &&
+                      !request.is_hidden
+                    ? S.offers.noOffersYet
+                    : S.offers.noOffersFinal
               }
             />
           ) : (
@@ -363,11 +365,9 @@ export default async function RequestDetailPage({
               {liveOffers.map((o) => {
                 const hp = profileById.get(o.helper_id);
                 const agg = ratingAgg.get(o.helper_id);
-                // The selected offer stands out; while choosing, so does the
-                // first live offer (the redesign's "recommended" emphasis).
-                const highlight =
-                  o.status === "selected" ||
-                  (request.status === "has_offers" && o.id === liveOffers[0].id);
+                // Emphasis always means a real state — the chosen offer — never
+                // an implied ranking (the oldest offer is not "recommended").
+                const highlight = o.status === "selected";
                 return (
                   <li
                     key={o.id}
@@ -420,6 +420,9 @@ export default async function RequestDetailPage({
         })()
       ) : canOffer ? (
         <OfferForm
+          // Remount when the offer identity changes (edit→withdraw→create), so
+          // stale useActionState / success banner / defaults reset.
+          key={myOffer?.status === "active" ? myOffer.id : "new"}
           requestId={id}
           existing={
             myOffer?.status === "active"

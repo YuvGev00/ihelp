@@ -1,7 +1,6 @@
 "use client";
 
 import { useCallback, useEffect, useRef } from "react";
-import { useRouter } from "next/navigation";
 import type { Map as LeafletMap, LayerGroup } from "leaflet";
 import "leaflet/dist/leaflet.css";
 import { ensureDefaultIcon } from "@/lib/leaflet-icon";
@@ -17,15 +16,14 @@ export type MapPin = {
 };
 
 /**
- * Feed map: one marker per open request. Clicking a marker opens a popup with a
- * request summary and a link to its page; hovering opens the same popup. Pins
- * fit the view to the requests. Display-only OpenStreetMap, no geocoding.
+ * Feed map: one marker per open request. Clicking (or tapping) a marker toggles
+ * a popup with a request summary and a link to its page; desktop hover also
+ * opens it. Pins fit the view to the requests. Display-only OpenStreetMap.
  */
 export function RequestsMap({ pins }: { pins: MapPin[] }) {
   const containerRef = useRef<HTMLDivElement>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const layerRef = useRef<LayerGroup | null>(null);
-  const router = useRouter();
 
   const renderPins = useCallback(
     (L: typeof import("leaflet")) => {
@@ -48,16 +46,18 @@ export function RequestsMap({ pins }: { pins: MapPin[] }) {
             ${p.distanceText ? `<span style="color:#78716c;font-size:12px">${escapeHtml(p.distanceText)}</span><br/>` : ""}
             <a href="/requests/${p.id}" style="color:#047857;font-weight:600">${S.requests.viewRequest} ←</a>
           </div>`;
-        const marker = L.marker([p.lat, p.lng]).bindPopup(html);
+        // Click/tap toggles the popup (Leaflet default) so the "view request"
+        // link is reachable everywhere; desktop hover opens it as a convenience.
+        // No click→navigate and no mouseout→close (that made the link a
+        // hover-only trap — WCAG 1.4.13).
+        const marker = L.marker([p.lat, p.lng], { alt: p.title }).bindPopup(html);
         marker.on("mouseover", () => marker.openPopup());
-        marker.on("mouseout", () => marker.closePopup());
-        marker.on("click", () => router.push(`/requests/${p.id}`));
         layer.addLayer(marker);
         bounds.extend([p.lat, p.lng]);
       }
       map.fitBounds(bounds, { padding: [40, 40], maxZoom: 15 });
     },
-    [pins, router]
+    [pins]
   );
 
   useEffect(() => {
@@ -90,8 +90,8 @@ export function RequestsMap({ pins }: { pins: MapPin[] }) {
   return (
     <div
       ref={containerRef}
-      className="z-0 h-72 w-full overflow-hidden rounded-xl bg-stone-100"
-      role="img"
+      className="z-0 h-72 w-full overflow-hidden rounded-xl bg-tile"
+      role="region"
       aria-label={S.requests.mapAllTitle}
     />
   );

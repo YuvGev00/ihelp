@@ -1,7 +1,8 @@
 "use client";
 
-import { useActionState, useState, useTransition } from "react";
+import { useActionState, useState } from "react";
 import { createOffer, updateOffer, withdrawOffer } from "@/actions/offers";
+import { useConfirmedTransition } from "@/components/LifecycleActions";
 import { S } from "@/lib/strings";
 
 type PricingMode = "fixed" | "volunteer" | "after_job";
@@ -72,7 +73,7 @@ export function OfferForm({
             return (
               <label
                 key={m}
-                className={`chip cursor-pointer select-none ${
+                className={`chip cursor-pointer select-none has-[:focus-visible]:ring-2 has-[:focus-visible]:ring-brand/40 ${
                   existing ? "opacity-60" : ""
                 } ${
                   on
@@ -147,21 +148,19 @@ export function WithdrawButton({
   offerId: string;
   requestId: string;
 }) {
-  const [pending, startTransition] = useTransition();
+  // Surface failures — the designed race is that the requester assigns this
+  // offer while the helper's page is stale; the withdraw then matches zero rows.
+  const { pending, error, run } = useConfirmedTransition(
+    S.offers.withdrawConfirm,
+    () => withdrawOffer(offerId, requestId)
+  );
   return (
-    <button
-      type="button"
-      disabled={pending}
-      onClick={() => {
-        if (!window.confirm(S.offers.withdrawConfirm)) return;
-        startTransition(async () => {
-          await withdrawOffer(offerId, requestId);
-        });
-      }}
-      className="btn-danger"
-    >
-      {S.offers.withdraw}
-    </button>
+    <span>
+      <button type="button" disabled={pending} onClick={run} className="btn-danger">
+        {pending ? S.common.loading : S.offers.withdraw}
+      </button>
+      {error && <span className="field-error block">{error}</span>}
+    </span>
   );
 }
 
@@ -176,6 +175,7 @@ export function StarsInput({ name }: { name: string }) {
           type="button"
           onClick={() => setValue(n)}
           aria-label={`${n} ${S.lifecycle.stars}`}
+          aria-pressed={n <= value}
           className={`transition ${n <= value ? "text-star" : "text-[#d9e0dd]"}`}
         >
           ★

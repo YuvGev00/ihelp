@@ -213,7 +213,9 @@ export default async function RequestsFeedPage({
           message={
             viewer && distKm != null
               ? S.requests.noRequestsInRange
-              : S.requests.noOpenRequests
+              : category
+                ? S.requests.noRequestsInCategory
+                : S.requests.noOpenRequests
           }
         />
       ) : (
@@ -260,12 +262,13 @@ export default async function RequestsFeedPage({
       )}
 
       {totalPages > 1 && (
-        <nav className="flex justify-center gap-2 pt-2">
+        <nav className="flex justify-center gap-2 pt-2" aria-label="עמודים">
           {Array.from({ length: totalPages }, (_, i) => i + 1).map((p) => (
             <Link
               key={p}
               href={`/requests${params({ page: String(p) })}`}
               className={filterChip(p === pageNum)}
+              aria-current={p === pageNum ? "page" : undefined}
             >
               {p}
             </Link>
