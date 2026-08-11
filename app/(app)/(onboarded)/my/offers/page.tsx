@@ -1,14 +1,12 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { EmptyState, OfferPriceChip } from "@/components/ui";
 import { S } from "@/lib/strings";
 
 export default async function MyOffersPage() {
+  const user = await getUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   // Withdrawn offers are hidden from this list — a withdrawal is the helper

@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/ProfileForm";
 import { GeolocationPrompt } from "@/components/GeolocationPrompt";
@@ -6,10 +6,8 @@ import { Badge, Stars } from "@/components/ui";
 import { S } from "@/lib/strings";
 
 export default async function ProfilePage() {
+  const user = await getUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const [{ data: profile }, { data: priv }, { data: myRatings }] =

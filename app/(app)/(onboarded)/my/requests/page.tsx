@@ -1,15 +1,13 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { categoryLabel } from "@/lib/categories";
 import { StatusChip, HiddenChip, EmptyState, formatDate } from "@/components/ui";
 import { S } from "@/lib/strings";
 
 export default async function MyRequestsPage() {
+  const user = await getUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) redirect("/login");
 
   const { data: requests } = await supabase

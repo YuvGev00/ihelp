@@ -1,28 +1,23 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { getUser, getViewerProfile } from "@/lib/supabase/server";
 
 /**
  * Onboarding gate (spec §8.1): a user with no display name is sent to
  * /profile, which doubles as the onboarding step. /profile itself lives
  * outside this group, so there is no redirect loop.
+ *
+ * Both reads are the per-request-cached helpers, so this layer adds no extra
+ * round-trips over the parent (app) layout.
  */
 export default async function OnboardedLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name")
-    .eq("id", user.id)
-    .single();
-
+  const profile = await getViewerProfile();
   if (!profile?.display_name) redirect("/profile");
 
   return <>{children}</>;

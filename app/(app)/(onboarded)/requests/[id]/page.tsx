@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser, getViewerProfile } from "@/lib/supabase/server";
 import { categoryLabel } from "@/lib/categories";
 import {
   StatusChip,
@@ -26,6 +26,14 @@ import {
 } from "@/components/LifecycleActions";
 import { S } from "@/lib/strings";
 
+type HelperProfile = {
+  id: string;
+  display_name: string;
+  avatar_path: string | null;
+  is_identity_verified: boolean;
+  is_professional: boolean;
+};
+
 /**
  * The request detail adapts to the viewer (spec §11 UX): same URL, panels per
  * role. RLS decides row visibility — an invisible row is a 404, deliberately
@@ -38,9 +46,7 @@ export default async function RequestDetailPage({
 }) {
   const { id } = await params;
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) notFound();
 
   const { data: request } = await supabase
@@ -52,7 +58,8 @@ export default async function RequestDetailPage({
 
   const isOwner = request.requester_id === user.id;
 
-  const [{ data: photos }, { data: offers }, { data: profile }, { data: rating }] =
+  // Round 1: everything that depends only on the request row.
+  const [{ data: photos }, { data: offers }, viewerProfile, { data: rating }] =
     await Promise.all([
       supabase
         .from("request_photos")
@@ -65,38 +72,57 @@ export default async function RequestDetailPage({
         .select("id, helper_id, status, message, pricing_mode, price, final_price, created_at")
         .eq("request_id", id)
         .order("created_at"),
-      supabase
-        .from("profiles")
-        .select("is_identity_verified")
-        .eq("id", user.id)
-        .single(),
+      getViewerProfile(), // cached — the viewer's own verified flag
       supabase.from("ratings").select("stars, note").eq("request_id", id).maybeSingle(),
     ]);
 
-  // Photos via bulk signed URLs (private bucket).
-  const photoPaths = (photos ?? []).map((p) => p.storage_path);
-  const signed = photoPaths.length
-    ? (
-        await supabase.storage
-          .from("request-photos")
-          .createSignedUrls(photoPaths, 3600)
-      ).data
-    : [];
-
-  // Helper public profiles + rating aggregates for visible offers.
+  // Derive everything needed for round 2 from request + offers (no I/O).
+  const selectedOffer =
+    (offers ?? []).find((o) => o.id === request.assigned_offer_id) ?? null;
+  const isSelectedHelper = selectedOffer?.helper_id === user.id;
+  const isParty = isOwner || isSelectedHelper;
+  const assignedPlus = ["assigned", "completed", "rated"].includes(request.status);
   const helperIds = [...new Set((offers ?? []).map((o) => o.helper_id))];
-  const [{ data: helperProfiles }, { data: helperRatings }] = helperIds.length
-    ? await Promise.all([
-        supabase
-          .from("profiles")
-          .select("id, display_name, avatar_path, is_identity_verified, is_professional")
-          .in("id", helperIds),
-        supabase.from("helper_ratings").select("helper_id, stars").in("helper_id", helperIds),
-      ])
-    : [{ data: [] }, { data: [] }];
-  const profileById = new Map((helperProfiles ?? []).map((p) => [p.id, p]));
+  const photoPaths = (photos ?? []).map((p) => p.storage_path);
+  // The counterpart is derivable without the contact RPC result.
+  const counterpartId =
+    isParty && assignedPlus
+      ? isOwner
+        ? selectedOffer?.helper_id ?? null
+        : request.requester_id
+      : null;
+
+  // Round 2: signed URLs, helper profiles+ratings, the contact RPC, and the
+  // counterpart avatar — all independent, so one Promise.all instead of a
+  // four-step waterfall.
+  const [signedRes, helperProfilesRes, helperRatingsRes, contactRes, counterpartRes] =
+    await Promise.all([
+      photoPaths.length
+        ? supabase.storage.from("request-photos").createSignedUrls(photoPaths, 3600)
+        : Promise.resolve({ data: [] as { path: string; signedUrl: string }[] }),
+      helperIds.length
+        ? supabase
+            .from("profiles")
+            .select("id, display_name, avatar_path, is_identity_verified, is_professional")
+            .in("id", helperIds)
+        : Promise.resolve({ data: [] }),
+      helperIds.length
+        ? supabase.from("helper_ratings").select("helper_id, stars").in("helper_id", helperIds)
+        : Promise.resolve({ data: [] }),
+      isParty && assignedPlus
+        ? supabase.rpc("get_counterpart_contact", { p_request_id: id })
+        : Promise.resolve({ data: null }),
+      counterpartId
+        ? supabase.from("profiles").select("avatar_path").eq("id", counterpartId).single()
+        : Promise.resolve({ data: null }),
+    ]);
+
+  const signed = signedRes.data ?? [];
+  const profileById = new Map(
+    ((helperProfilesRes.data as HelperProfile[] | null) ?? []).map((p) => [p.id, p])
+  );
   const ratingAgg = new Map<string, { sum: number; count: number }>();
-  for (const r of helperRatings ?? []) {
+  for (const r of (helperRatingsRes.data as { helper_id: string; stars: number }[] | null) ?? []) {
     const agg = ratingAgg.get(r.helper_id) ?? { sum: 0, count: 0 };
     agg.sum += r.stars;
     agg.count += 1;
@@ -110,34 +136,10 @@ export default async function RequestDetailPage({
     myOffers.find((o) => o.status === "active") ??
     myOffers[myOffers.length - 1] ??
     null;
-  const selectedOffer =
-    (offers ?? []).find((o) => o.id === request.assigned_offer_id) ?? null;
-  const isSelectedHelper = selectedOffer?.helper_id === user.id;
-  const isParty = isOwner || isSelectedHelper;
-  const assignedPlus = ["assigned", "completed", "rated"].includes(request.status);
 
-  // Contact reveal — the only read RPC; parties only, assigned onward.
-  const contact =
-    isParty && assignedPlus
-      ? (await supabase.rpc("get_counterpart_contact", { p_request_id: id })).data?.[0]
-      : null;
-
-  // Counterpart avatar for the contact card: the helper's if the viewer is the
-  // owner, else the requester's. Public profiles.avatar_path (RLS-readable).
-  const counterpartId = contact
-    ? isOwner
-      ? selectedOffer?.helper_id
-      : request.requester_id
-    : null;
-  const contactAvatarPath = counterpartId
-    ? (
-        await supabase
-          .from("profiles")
-          .select("avatar_path")
-          .eq("id", counterpartId)
-          .single()
-      ).data?.avatar_path ?? null
-    : null;
+  const profile = viewerProfile;
+  const contact = contactRes.data?.[0] ?? null;
+  const contactAvatarPath = counterpartRes.data?.avatar_path ?? null;
 
   const canOffer =
     !isOwner &&

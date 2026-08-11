@@ -1,22 +1,16 @@
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser, getViewerProfile } from "@/lib/supabase/server";
 import { NewRequestForm } from "@/components/RequestForm";
 import { S } from "@/lib/strings";
 
 /** Posting requires identity verification (spec §8.3) — gate redirects to the flow. */
 export default async function NewRequestPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: priv }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("is_identity_verified")
-      .eq("id", user.id)
-      .single(),
+  const supabase = await createClient();
+  const [profile, { data: priv }] = await Promise.all([
+    getViewerProfile(), // cached — no extra round-trip
     supabase
       .from("profiles_private")
       .select("lat, lng")

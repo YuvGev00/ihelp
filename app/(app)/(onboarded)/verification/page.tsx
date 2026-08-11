@@ -1,4 +1,4 @@
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser, getViewerProfile } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import {
   IdentityApplicationForm,
@@ -50,18 +50,12 @@ function ApplicationStatus({ app }: { app: Application }) {
 }
 
 export default async function VerificationPage() {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser();
   if (!user) redirect("/login");
 
-  const [{ data: profile }, { data: apps }] = await Promise.all([
-    supabase
-      .from("profiles")
-      .select("is_identity_verified, is_professional")
-      .eq("id", user.id)
-      .single(),
+  const supabase = await createClient();
+  const [profile, { data: apps }] = await Promise.all([
+    getViewerProfile(), // cached — reused from the layout
     supabase
       .from("verification_applications")
       .select("id, kind, status, full_name, admin_note, created_at")

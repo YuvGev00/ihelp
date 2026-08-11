@@ -1,5 +1,5 @@
 import { notFound } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser } from "@/lib/supabase/server";
 import { ReviewForm, HideToggle, RevokeButton } from "@/components/AdminReview";
 import { StatusChip, EmptyState, formatDate } from "@/components/ui";
 import { S } from "@/lib/strings";
@@ -10,10 +10,8 @@ import { S } from "@/lib/strings";
  * that re-checks is_admin() in its body.
  */
 export default async function AdminPage() {
+  const user = await getUser();
   const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
   if (!user) notFound();
 
   const { data: priv } = await supabase
@@ -122,7 +120,7 @@ export default async function AdminPage() {
                   </a>
                 )}
                 {(historyByUser.get(app.user_id) ?? []).length > 0 && (
-                  <div className="mt-2 rounded-xl bg-[#f7faf9] p-2 text-xs text-body">
+                  <div className="mt-2 rounded-xl bg-canvas p-2 text-xs text-body">
                     <p className="font-bold">{S.admin.historyTitle}</p>
                     <ul className="mt-1 space-y-0.5">
                       {historyByUser.get(app.user_id)!.map((h, i) => (

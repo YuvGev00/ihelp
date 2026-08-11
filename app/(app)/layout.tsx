@@ -1,6 +1,6 @@
 import Link from "next/link";
 import { redirect } from "next/navigation";
-import { createClient } from "@/lib/supabase/server";
+import { createClient, getUser, getViewerProfile } from "@/lib/supabase/server";
 import { signOut } from "@/actions/auth";
 import { NavLinks } from "@/components/NavLinks";
 import { BottomNav } from "@/components/BottomNav";
@@ -19,23 +19,18 @@ export default async function AppLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const supabase = await createClient();
-  const {
-    data: { user },
-  } = await supabase.auth.getUser();
+  const user = await getUser(); // cached — shared with (onboarded) layout + pages
   if (!user) redirect("/login"); // middleware already guards; belt & suspenders
 
-  const { data: profile } = await supabase
-    .from("profiles")
-    .select("display_name, is_identity_verified")
-    .eq("id", user.id)
-    .single();
-
-  const { data: priv } = await supabase
-    .from("profiles_private")
-    .select("is_admin")
-    .eq("user_id", user.id)
-    .single();
+  const supabase = await createClient();
+  const [profile, { data: priv }] = await Promise.all([
+    getViewerProfile(), // cached — reused by pages that need the verified flag
+    supabase
+      .from("profiles_private")
+      .select("is_admin")
+      .eq("user_id", user.id)
+      .single(),
+  ]);
 
   return (
     <div className="min-h-screen">
