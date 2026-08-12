@@ -377,13 +377,20 @@ literal non-matching URL.)
 Reads never go through actions: Server Components query Supabase directly and the
 contact reveal uses `get_counterpart_contact` (the only read RPC).
 
-**No REST/route-handler API layer exists.** With password-only auth and email
-confirmation disabled (§8.4), even the classic `/auth/callback` code-exchange
-route is unnecessary — `@supabase/ssr` sets the session cookies directly from the
-sign-in/sign-up Server Actions; the callback route appears only when email
-confirmation is switched on (the stated roadmap item). Rationale: Server Actions
-cover every mutation with less surface (no endpoint enumeration, origin checks
-built in), and no third party needs to call iHelp programmatically.
+**No product REST/route-handler API layer exists.** With password-only auth and
+email confirmation disabled (§8.4), even the classic `/auth/callback`
+code-exchange route is unnecessary — `@supabase/ssr` sets the session cookies
+directly from the sign-in/sign-up Server Actions; the callback route appears only
+when email confirmation is switched on (the stated roadmap item). Rationale:
+Server Actions cover every mutation with less surface (no endpoint enumeration,
+origin checks built in), and no third party needs to call iHelp programmatically.
+
+The single exception is one **operational** route handler, `GET /api/health`
+(`app/api/health/route.ts`): a public, read-only keep-alive endpoint that runs one
+trivial anon-key count against the DB and returns 200, pinged on a schedule by a
+GitHub Actions cron so the Supabase free-tier project does not auto-pause. It is
+infrastructure, not part of the product API surface — it exposes no data and takes
+no input.
 
 ---
 

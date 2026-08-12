@@ -59,7 +59,13 @@ bounding-box prefilter.
   ratings) — the feed ships 7 columns per row, not the row. The single-row
   request-detail read uses `*` deliberately: one row, most columns render.
 - **Reads are Server Components**: the browser receives rendered HTML, never
-  raw rows — coordinates in particular stay server-side (architecture §8.1).
+  raw rows. Two coordinate sets, two rules (architecture §8.1): a *viewer's own
+  home* coordinates (`profiles_private`) never leave the server — they feed the
+  Haversine sort in the RSC and only formatted distances reach the browser;
+  *request* coordinates are deliberately shipped to the client as map pins (the
+  feed map needs points to plot), which is the accepted, documented exception —
+  requests carry a location the requester confirms at publish time, and it is
+  already signed-in-readable under RLS (spec §9.3).
 - **Photos load per page, not per table**: only the first photo of the 12
   visible cards is fetched and signed (one bulk `createSignedUrls` call), not
   every photo of every request.
