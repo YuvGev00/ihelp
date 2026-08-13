@@ -179,7 +179,31 @@ export const S = {
       closed: "נסגרה",
       withdrawn: "נמשכה",
     } as Record<string, string>,
+    // Short stance labels for the comparison view (distinct from the offer-form
+    // labels above, which are phrased as the helper's own choice).
+    stanceLabel: {
+      fixed: "מחיר קבוע",
+      after_job: "מחיר בסיום",
+      volunteer: "התנדבות",
+    } as Record<string, string>,
     requestGone: "הבקשה אינה זמינה עוד",
+    // Offer comparison workbench
+    sortLabel: "מיון",
+    sortByPrice: "מחיר: מהזול ליקר",
+    sortByRating: "דירוג: מהגבוה לנמוך",
+    sortByNewest: "החדשות ביותר",
+    filterAll: "הכל",
+    filterVolunteers: "מתנדבים",
+    filterFixed: "מחיר קבוע",
+    filterPros: "בעלי מקצוע",
+    summary: (n: number, min: number | null, max: number | null, volunteers: number) => {
+      const parts = [n === 1 ? "הצעה אחת" : `${n} הצעות`];
+      if (min != null && max != null)
+        parts.push(min === max ? `₪${min}` : `₪${min}–₪${max}`);
+      if (volunteers > 0) parts.push(`${volunteers} בהתנדבות`);
+      return parts.join(" · ");
+    },
+    noMatchFilter: "אין הצעות בסינון שנבחר",
   },
 
   timeline: {

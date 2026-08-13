@@ -6,7 +6,6 @@ import {
   StatusChip,
   PublicStatusChip,
   HiddenChip,
-  Badge,
   Stars,
   Avatar,
   EmptyState,
@@ -14,11 +13,11 @@ import {
   formatDate,
 } from "@/components/ui";
 import { OfferForm } from "@/components/OfferForm";
+import { OfferComparison } from "@/components/OfferComparison";
 import { EditRequestForm } from "@/components/RequestForm";
 import { RequestTimeline } from "@/components/RequestTimeline";
 import { MapView } from "@/components/MapView";
 import {
-  AssignButton,
   CancelRequestButton,
   ConfirmCompletionButton,
   MarkPaidButton,
@@ -347,83 +346,57 @@ export default async function RequestDetailPage({
           const liveOffers = (offers ?? []).filter((o) =>
             ["active", "selected"].includes(o.status)
           );
+          if (!liveOffers.length) {
+            return (
+              <section className="space-y-3">
+                <h2 className="text-lg font-extrabold text-ink">
+                  {S.offers.sectionTitle}
+                </h2>
+                <EmptyState
+                  message={
+                    request.status === "cancelled" && (offers ?? []).length > 0
+                      ? S.offers.offersClosedCancelled
+                      : ["open", "has_offers"].includes(request.status) &&
+                          !request.is_hidden
+                        ? S.offers.noOffersYet
+                        : S.offers.noOffersFinal
+                  }
+                />
+              </section>
+            );
+          }
+          // Shape the enriched offers into serializable props for the client
+          // comparison component (helper profile + rating aggregate already
+          // fetched above).
+          const comparable = liveOffers.map((o) => {
+            const hp = profileById.get(o.helper_id);
+            const agg = ratingAgg.get(o.helper_id);
+            return {
+              id: o.id,
+              helper_id: o.helper_id,
+              status: o.status,
+              message: o.message,
+              pricing_mode: o.pricing_mode,
+              price: o.price,
+              final_price: o.final_price,
+              created_at: o.created_at,
+              helper: hp
+                ? {
+                    display_name: hp.display_name,
+                    avatar_path: hp.avatar_path,
+                    is_identity_verified: hp.is_identity_verified,
+                    is_professional: hp.is_professional,
+                  }
+                : null,
+              rating: agg ? { avg: agg.sum / agg.count, count: agg.count } : null,
+            };
+          });
           return (
-        <section className="space-y-3">
-          <div className="flex items-center gap-2">
-            <h2 className="text-lg font-extrabold text-ink">{S.offers.sectionTitle}</h2>
-            {liveOffers.length > 0 && (
-              <span className="rounded-full bg-mint px-2.5 py-0.5 text-xs font-bold text-brand">
-                {S.offers.offerCount(liveOffers.length)}
-              </span>
-            )}
-          </div>
-          {!liveOffers.length ? (
-            <EmptyState
-              message={
-                request.status === "cancelled" && (offers ?? []).length > 0
-                  ? S.offers.offersClosedCancelled
-                  : ["open", "has_offers"].includes(request.status) &&
-                      !request.is_hidden
-                    ? S.offers.noOffersYet
-                    : S.offers.noOffersFinal
-              }
+            <OfferComparison
+              requestId={id}
+              offers={comparable}
+              canAssign={request.status === "has_offers"}
             />
-          ) : (
-            <ul className="space-y-3">
-              {liveOffers.map((o) => {
-                const hp = profileById.get(o.helper_id);
-                const agg = ratingAgg.get(o.helper_id);
-                // Emphasis always means a real state — the chosen offer — never
-                // an implied ranking (the oldest offer is not "recommended").
-                const highlight = o.status === "selected";
-                return (
-                  <li
-                    key={o.id}
-                    className={`rounded-2xl border bg-white p-4 space-y-3 ${
-                      highlight
-                        ? "border-2 border-brand shadow-[var(--shadow-raise)]"
-                        : "border-line shadow-[var(--shadow-card)]"
-                    }`}
-                  >
-                    <div className="flex items-center gap-3">
-                      <Avatar name={hp?.display_name ?? "?"} path={hp?.avatar_path} size={44} />
-                      <div className="min-w-0 flex-1">
-                        <Link
-                          href={`/helpers/${o.helper_id}`}
-                          className="font-bold text-ink hover:underline"
-                        >
-                          {hp?.display_name}
-                        </Link>
-                        <div className="mt-0.5">
-                          <Stars
-                            value={agg ? agg.sum / agg.count : null}
-                            count={agg?.count ?? 0}
-                          />
-                        </div>
-                      </div>
-                      <OfferPriceChip offer={o} />
-                    </div>
-                    <div className="flex flex-wrap items-center gap-1.5">
-                      <Badge
-                        verified={hp?.is_identity_verified}
-                        professional={hp?.is_professional}
-                      />
-                      {o.status === "selected" && (
-                        <span className="chip bg-mint text-brand">
-                          {S.offers.status.selected}
-                        </span>
-                      )}
-                    </div>
-                    <p className="text-sm leading-relaxed text-body">{o.message}</p>
-                    {request.status === "has_offers" && o.status === "active" && (
-                      <AssignButton requestId={id} offerId={o.id} />
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </section>
           );
         })()
       ) : canOffer ? (
