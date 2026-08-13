@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { Assistant } from "next/font/google";
 import "./globals.css";
 
@@ -15,6 +15,22 @@ export const metadata: Metadata = {
   title: "iHelp — מבקשים עזרה, העוזרים מגיעים אליכם",
   description:
     "מפרסמים בקשת עזרה, ועוזרים מאומתים בסביבה מציעים סיוע — בתשלום או בהתנדבות.",
+  // iOS home-screen support (Android reads the manifest).
+  appleWebApp: {
+    capable: true,
+    title: "iHelp",
+    statusBarStyle: "default",
+  },
+  icons: {
+    apple: "/icons/apple-icon-180.png",
+  },
+};
+
+export const viewport: Viewport = {
+  themeColor: "#0d7a5f",
+  // viewport-fit=cover lets the app draw under the notch; components use
+  // env(safe-area-inset-*) where needed.
+  viewportFit: "cover",
 };
 
 /**

@@ -15,6 +15,7 @@ import {
 } from "@/components/ui";
 import { OfferForm } from "@/components/OfferForm";
 import { EditRequestForm } from "@/components/RequestForm";
+import { RequestTimeline } from "@/components/RequestTimeline";
 import { MapView } from "@/components/MapView";
 import {
   AssignButton,
@@ -174,6 +175,11 @@ export default async function RequestDetailPage({
           {S.requests.postedAt} {formatDate(request.created_at)}
         </p>
       </div>
+
+      {/* Lifecycle timeline — shown to parties/admin, who see the true status
+          (a browsing helper sees has_offers as "open", so the timeline, which
+          would reveal the state, stays with the people entitled to it). */}
+      {(isParty || isOwner) && <RequestTimeline request={request} />}
 
       {/* Photos — fixed-aspect boxes so any image dimensions render cleanly */}
       {signed && signed.length > 0 && (

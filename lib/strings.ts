@@ -182,6 +182,19 @@ export const S = {
     requestGone: "הבקשה אינה זמינה עוד",
   },
 
+  timeline: {
+    title: "מסלול הבקשה",
+    // Node labels — one per lifecycle state the request passes through.
+    steps: {
+      open: "פורסמה",
+      has_offers: "התקבלו הצעות",
+      assigned: "שובץ עוזר",
+      completed: "הושלמה",
+      rated: "דורגה",
+      cancelled: "בוטלה",
+    } as Record<string, string>,
+  },
+
   lifecycle: {
     contactTitle: "פרטי קשר לתיאום",
     contactExplainer: "הפרטים גלויים רק לשניכם. תאמו את העזרה ביניכם.",
