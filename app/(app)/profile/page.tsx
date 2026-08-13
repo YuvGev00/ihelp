@@ -2,6 +2,7 @@ import { createClient, getUser } from "@/lib/supabase/server";
 import { redirect } from "next/navigation";
 import { ProfileForm } from "@/components/ProfileForm";
 import { GeolocationPrompt } from "@/components/GeolocationPrompt";
+import { InstallPrompt } from "@/components/InstallPrompt";
 import { Badge, Stars } from "@/components/ui";
 import { S } from "@/lib/strings";
 
@@ -65,9 +66,12 @@ export default async function ProfilePage() {
       />
 
       <section className="card">
-        <h2 className="mb-2 font-semibold">{S.profile.location}</h2>
+        <h2 className="mb-2 font-extrabold text-ink">{S.profile.location}</h2>
         <GeolocationPrompt hasLocation={priv?.lat != null} />
       </section>
+
+      {/* Renders nothing unless the app is installable and not already installed */}
+      <InstallPrompt />
     </div>
   );
 }

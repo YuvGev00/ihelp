@@ -298,5 +298,16 @@ export const S = {
     retry: "נסו שוב",
     landingCta: "לצפייה בבקשות",
     landingSignUp: "הצטרפות ל-iHelp",
+    share: "שיתוף",
+    linkCopied: "הקישור הועתק ✓",
+    shareRequestText: "בקשת עזרה ב-iHelp",
+  },
+
+  install: {
+    cta: "התקנת האפליקציה",
+    prompt: "התקינו את iHelp למסך הבית לגישה מהירה כמו אפליקציה",
+    iosTitle: "התקנה ל-iPhone",
+    iosHint: "פתחו את תפריט השיתוף בסרגל הדפדפן, ואז בחרו ״הוסף למסך הבית״.",
+    dismiss: "לא עכשיו",
   },
 } as const;

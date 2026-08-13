@@ -16,6 +16,7 @@ import { OfferForm } from "@/components/OfferForm";
 import { OfferComparison } from "@/components/OfferComparison";
 import { EditRequestForm } from "@/components/RequestForm";
 import { RequestTimeline } from "@/components/RequestTimeline";
+import { ShareButton } from "@/components/ShareButton";
 import { MapView } from "@/components/MapView";
 import {
   CancelRequestButton,
@@ -170,9 +171,12 @@ export default async function RequestDetailPage({
           )}
         </div>
         <h1 className="text-2xl font-extrabold text-ink">{request.title}</h1>
-        <p className="text-xs text-muted">
-          {S.requests.postedAt} {formatDate(request.created_at)}
-        </p>
+        <div className="mt-1 flex items-center justify-between gap-2">
+          <p className="text-xs text-muted">
+            {S.requests.postedAt} {formatDate(request.created_at)}
+          </p>
+          <ShareButton title={request.title} />
+        </div>
       </div>
 
       {/* Lifecycle timeline — shown to parties/admin, who see the true status
@@ -182,7 +186,7 @@ export default async function RequestDetailPage({
 
       {/* Photos — fixed-aspect boxes so any image dimensions render cleanly */}
       {signed && signed.length > 0 && (
-        <div className="flex gap-2 overflow-x-auto">
+        <div className="flex gap-2 overflow-x-auto overscroll-x-contain">
           {signed.map((s, i) =>
             s.signedUrl ? (
               <div

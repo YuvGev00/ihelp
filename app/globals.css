@@ -47,6 +47,18 @@
 @layer base {
   body {
     font-family: var(--font-assistant), system-ui, sans-serif;
+    /* Kill the browser's grey tap-flash and accidental pull-to-refresh so the
+       app feels native on touch. Behavioural/vertical only — no RTL impact. */
+    -webkit-tap-highlight-color: transparent;
+    overscroll-behavior-y: none;
+  }
+  /* Remove the 300ms tap delay on interactive elements. */
+  a,
+  button,
+  [role="button"],
+  label,
+  summary {
+    touch-action: manipulation;
   }
 }
 
