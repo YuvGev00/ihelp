@@ -241,6 +241,12 @@ export const S = {
     profileTitle: "פרופיל עוזר",
     ratingCount: "דירוגים",
     noRatings: "עדיין אין דירוגים",
+    completedJobs: "עבודות שהושלמו",
+    jobsCount: (n: number) => (n === 1 ? "עבודה אחת" : `${n} עבודות`),
+    expertiseTitle: "תחומי התמחות",
+    distributionTitle: "פילוח הדירוגים",
+    reviewsTitle: "חוות דעת",
+    memberSince: (d: string) => `חבר מאז ${d}`,
   },
 
   admin: {

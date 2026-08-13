@@ -382,4 +382,40 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
     });
     expect(forged.error).not.toBeNull();
   }, 30_000);
+
+  it("F9: get_helper_stats returns aggregates; helper_ratings exposes category but not rater linkage", async () => {
+    // Relies on the F1→F5 flow above, which left helperA with one completed +
+    // rated job (5★, category from createRequestFixture).
+    const { data: stats, error } = await requester.client.rpc("get_helper_stats", {
+      p_helper_id: helperA.id,
+    });
+    expect(error).toBeNull();
+    const s = stats as {
+      completed_jobs: number;
+      rating_count: number;
+      rating_avg: number;
+      distribution: Record<string, number>;
+      categories: Record<string, number>;
+    };
+    expect(s.completed_jobs).toBeGreaterThanOrEqual(1);
+    expect(s.rating_count).toBeGreaterThanOrEqual(1);
+    expect(s.rating_avg).toBeGreaterThan(0);
+    expect(Object.values(s.distribution).reduce((a, b) => a + b, 0)).toBe(
+      s.rating_count
+    );
+    expect(Object.keys(s.categories).length).toBeGreaterThanOrEqual(1);
+
+    // The anonymized view carries category context but never rater/request
+    // linkage — selecting those columns must fail (they aren't in the view).
+    const { data: withCat } = await helperB.client
+      .from("helper_ratings")
+      .select("stars, category")
+      .eq("helper_id", helperA.id);
+    expect(withCat?.[0]?.category).toBeTruthy();
+    const leak = await helperB.client
+      .from("helper_ratings")
+      .select("rater_id, request_id")
+      .eq("helper_id", helperA.id);
+    expect(leak.error).not.toBeNull(); // columns do not exist on the view
+  }, 40_000);
 });

@@ -1,4 +1,5 @@
 import { S } from "@/lib/strings";
+import { categoryLabel } from "@/lib/categories";
 
 /** The public URL of an avatar object (public bucket) — or null. */
 export function avatarUrl(path: string | null | undefined): string | null {
@@ -157,6 +158,64 @@ export function OfferPriceChip({ offer }: { offer: OfferPricing }) {
 export function EmptyState({ message }: { message: string }) {
   return (
     <div className="card py-10 text-center text-muted">{message}</div>
+  );
+}
+
+/** A compact stat tile: a big number over a label (jobs, ratings). */
+export function StatChip({ value, label }: { value: number | string; label: string }) {
+  return (
+    <div className="flex-1 rounded-2xl bg-mint px-3 py-2.5 text-center">
+      <div className="text-xl font-extrabold text-pine">{value}</div>
+      <div className="text-[11px] font-semibold text-[#3f7d68]">{label}</div>
+    </div>
+  );
+}
+
+/** 5→1 star-distribution histogram (share bar + count per level). */
+export function RatingBars({
+  distribution,
+  total,
+}: {
+  distribution: Record<string, number>; // { "5": n, ... }
+  total: number;
+}) {
+  if (!total) return null;
+  return (
+    <div className="space-y-1.5">
+      {[5, 4, 3, 2, 1].map((star) => {
+        const n = distribution[String(star)] ?? 0;
+        const pct = Math.round((n / total) * 100);
+        return (
+          <div key={star} className="flex items-center gap-2 text-xs">
+            <span className="w-8 shrink-0 font-semibold text-body">
+              {star} ★
+            </span>
+            <div className="h-2 flex-1 overflow-hidden rounded-full bg-line">
+              <div
+                className="h-full rounded-full bg-star"
+                style={{ width: `${pct}%` }}
+              />
+            </div>
+            <span className="w-6 shrink-0 text-start text-muted">{n}</span>
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
+/** Category-expertise chips: "חשמל · 8". */
+export function CategoryChips({ categories }: { categories: Record<string, number> }) {
+  const entries = Object.entries(categories).sort((a, b) => b[1] - a[1]);
+  if (!entries.length) return null;
+  return (
+    <div className="flex flex-wrap gap-1.5">
+      {entries.map(([key, count]) => (
+        <span key={key} className="chip bg-tint text-body">
+          {categoryLabel(key)} · {count}
+        </span>
+      ))}
+    </div>
   );
 }
 
