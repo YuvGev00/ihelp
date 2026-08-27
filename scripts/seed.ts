@@ -30,11 +30,11 @@ const db = createClient(url, serviceKey, {
   auth: { autoRefreshToken: false, persistSession: false },
 });
 
-// Demo accounts (*@ihelp.demo) are throwaway presentation logins, so they use a
-// simple shared password by default for easy demoing. Override with
-// SEED_PASSWORD for a stronger one. These accounts hold no real data and should
-// be rotated/deleted after the presentation (security doc R9).
-const PASSWORD = process.env.SEED_PASSWORD ?? "12345678";
+// Never hardcode credentials in the repo: provide SEED_PASSWORD, or a random
+// one is generated and printed exactly once at the end of the run.
+const PASSWORD =
+  process.env.SEED_PASSWORD ??
+  `demo-${Math.random().toString(36).slice(2, 10)}`;
 
 /** Throws on supabase-js soft errors ({ error } results do not throw). */
 function must<T extends { error: { message: string } | null }>(
