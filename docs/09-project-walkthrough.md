@@ -44,6 +44,40 @@ The app has two independent moving parts. Check both:
 
 ---
 
+## Part A2 — Demo logins (live site)
+
+The seeded demo accounts on the **live** site
+(https://ihelp-roan.vercel.app/login) all share one simple password so you can
+log in fast during the presentation:
+
+| Email | Password | Role |
+|---|---|---|
+| `admin@ihelp.demo` | `12345678` | Admin — reviews verifications, moderates |
+| `dana@ihelp.demo` | `12345678` | Requester (identity-verified) |
+| `yossi@ihelp.demo` | `12345678` | Helper — verified **+ professional badge** ("חשמלאי מוסמך") |
+| `rina@ihelp.demo` | `12345678` | Helper (identity-verified) |
+| `amir@ihelp.demo` | `12345678` | Helper (identity-verified) |
+| `noa@ihelp.demo` | `12345678` | Unverified — use to show the verification gate + admin queue |
+
+> These are throwaway presentation logins holding no real data, which is why the
+> shared `12345678` password is fine. To reset them again (e.g. after Supabase
+> rotates keys), run — with the project's **secret** key from the Supabase
+> dashboard (Project Settings → API Keys → the key labeled *Secret*, formerly
+> *service_role*):
+>
+> ```bash
+> RESET_URL='https://ukynxxrbfenrsnwqgtix.supabase.co' \
+> RESET_KEY='<secret key>' \
+> DEMO_PASSWORD='12345678' \
+> npx tsx scripts/reset-demo-password.mts
+> ```
+>
+> **Two-account demos:** log in as Dana (requester) in one browser and Yossi
+> (helper) in a **separate** browser — not two tabs of the same one, which share
+> the cookie and fight over the session (the #1 gotcha).
+
+---
+
 ## Part B — Running it locally (fresh machine)
 
 You need: **Node.js ≥ 20**, **Docker** (for local Supabase), and the **Supabase
