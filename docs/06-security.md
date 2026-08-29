@@ -1,7 +1,7 @@
 # iHelp — Basic Security
 
 **Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 6 of 6 (Security, assignment stage 9)
+**Document:** 6 of 11 (Security, assignment stage 9)
 **Grounded in:** the deployed implementation; every claim here is enforced by a
 migration or exercised by a test in the suite (`docs/04-testing-spec.md`).
 

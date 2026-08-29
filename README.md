@@ -23,6 +23,9 @@ helpers are rated after completion.
 | [docs/06-security.md](docs/06-security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
 | [docs/07-internal-architecture.md](docs/07-internal-architecture.md) | Internal guide — repo tour, flows, decision index (presentation prep) |
 | [docs/08-presentation.md](docs/08-presentation.md) | Presentation plan — 10–15 min outline + demo script |
+| [docs/09-project-walkthrough.md](docs/09-project-walkthrough.md) | Follow-along guide — setup, "is it up?" checks, demo logins, core flow |
+| [docs/10-file-reference.md](docs/10-file-reference.md) | File-by-file reference — every source file's purpose & implementation |
+| [docs/11-course-concepts-map.md](docs/11-course-concepts-map.md) | Course-concepts map — every taught concept → how/why/where in the code |
 
 ## Running locally
 

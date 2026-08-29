@@ -1,7 +1,7 @@
 # iHelp — Product Specification
 
 **Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 1 of 6 (Product Specification, assignment stage 2)
+**Document:** 1 of 11 (Product Specification, assignment stage 2)
 **Status:** Draft for review
 **UI language:** Hebrew (RTL) · **Code & docs:** English
 
@@ -633,7 +633,7 @@ explicit product decision.
    helper's offers.
 4. Distance sorting works with granted location permission and degrades
    gracefully without it.
-5. All six submission documents, the test suite, and the deployed app are
+5. All submission documents, the test suite, and the deployed app are
    consistent with each other — every claim in a document is true in the code.
 
 ---

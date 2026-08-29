@@ -1,7 +1,7 @@
 # iHelp — Architecture
 
 **Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 2 of 6 (Architecture, assignment stage 3)
+**Document:** 2 of 11 (Architecture, assignment stage 3)
 **Depends on:** `01-product-spec.md` (all product rules referenced here are defined there)
 **Status:** Draft for review
 
@@ -546,10 +546,12 @@ app/
   layout.tsx           # html dir="rtl" lang="he" only — nav lives in (app) layout
                        # note: no auth/callback route — password auth with email
                        # confirmation off needs none; it appears with that roadmap item
+proxy.ts               # Next.js 16 middleware convention file (was middleware.ts
+                       # pre-16); calls updateSession + defines the route matcher
 lib/
   supabase/server.ts   # per-request server client (cookies)
   supabase/client.ts   # browser client (auth, storage upload)
-  supabase/middleware.ts
+  supabase/middleware.ts  # updateSession() helper called by proxy.ts
   geo.ts               # Haversine + distance formatting
   validation/          # zod schemas, shared client/server
   strings.ts           # all Hebrew UI copy in one module
@@ -557,7 +559,9 @@ components/            # form fields, request card, badge, stars, etc.
 actions/               # server actions grouped by domain
 supabase/
   migrations/          # SQL: schema, RLS, RPCs, triggers, storage policies
-docs/                  # the six submission documents
+docs/                  # the submission documents (product, architecture,
+                       # technical design, testing, scale, security) + internal
+                       # guide, presentation, walkthrough, file & concepts maps
 ```
 
 ---

@@ -1,7 +1,7 @@
 # iHelp — Detailed Technical Design
 
 **Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 3 of 6 (Technical Design, assignment stage 4)
+**Document:** 3 of 11 (Technical Design, assignment stage 4)
 **Depends on:** `01-product-spec.md` (rules), `02-architecture.md` (structure)
 **Status:** Draft for review
 
@@ -35,7 +35,7 @@ create type public.offer_status    as enum
 create type public.application_kind   as enum ('identity','professional');
 create type public.application_status as enum
   ('pending','approved','rejected','revoked');
-create type public.payment_type    as enum ('paid','volunteer');
+create type public.payment_type    as enum ('paid','volunteer');  -- ⚠️ SUPERSEDED: dropped in migration 0011 (see header note); pricing moved to offers.pricing_mode
 ```
 
 Enums over `text + CHECK`: the state machine values are closed sets that the
@@ -107,8 +107,10 @@ create table public.help_requests (
   category      text not null check (category in
                   ('repairs','electricity','plumbing','moving','tutoring',
                    'tech_help','errands','gardening','pets','other')),
-  -- payment_type is the requester's INTENT (feed filter, expectation-setting);
-  -- the PRICE lives on offers — helpers dictate it (product change 2026-07-03)
+  -- ⚠️ SUPERSEDED (migration 0011): payment_type was REMOVED. A request carries
+  -- no paid/volunteer intent; pricing is entirely the helper's, on the offer
+  -- (offers.pricing_mode ∈ {fixed, volunteer, after_job}). Shown here only as the
+  -- pre-0009 design of record; the live schema has no payment_type column.
   payment_type  public.payment_type not null,
   -- request location, confirmed by the requester at publish time — NOT NULL:
   -- the spec (C3, §8.3, §9.3) makes location part of every request; a request
@@ -374,9 +376,12 @@ keeps the §10 promise — denied and missing are indistinguishable.
 
 ```sql
 -- 3.1 Create request + photos atomically; enforce ≥1 photo and path ownership.
+-- ⚠️ SUPERSEDED SIGNATURE: the p_payment_type parameter (and its use in the
+-- INSERT below) was REMOVED in migration 0011. The live RPC takes no pricing
+-- argument — a request has no paid/volunteer intent; pricing lives on offers.
 create or replace function public.create_request_with_photos(
   p_title text, p_description text, p_category text,
-  p_payment_type public.payment_type,
+  p_payment_type public.payment_type,   -- removed in 0011
   p_lat double precision, p_lng double precision,
   p_photo_paths text[]
 ) returns uuid
@@ -416,6 +421,7 @@ begin
     raise exception 'photo_not_uploaded';
   end if;
 
+  -- ⚠️ SUPERSEDED: payment_type column/arg dropped in migration 0011.
   insert into public.help_requests
     (requester_id, title, description, category, payment_type, lat, lng)
   values
