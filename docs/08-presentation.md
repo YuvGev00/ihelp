@@ -113,7 +113,7 @@ Point at one concrete policy, e.g. `offers_select` (sealed bids: only the offer'
 owner and the request's owner can read it).
 
 ### Min 10–11 — Tests  *(§12: 9)*
-> "61 automated tests. The interesting ones are the **integration tests that
+> "62 automated tests. The interesting ones are the **integration tests that
 > attack the database as the wrong user** — they *try* the forbidden action and
 > assert it's denied. For example, a test where a user tries to make themselves
 > admin, and one for the assign-vs-withdraw race. Plus a Playwright end-to-end

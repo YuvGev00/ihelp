@@ -21,12 +21,25 @@ forbidden action that way (tests P1–P15).
 
 ## 2. Authentication
 
-- **Supabase Auth, email + password.** Sessions are cookie-based via
-  `@supabase/ssr`; the middleware refreshes tokens on every matched request,
-  and every Server Component / Server Action builds a per-request client from
-  those cookies — so the user's JWT rides every DB and storage call.
-- Passwords: minimum 8 characters (zod + form attribute); hashing, session
-  token rotation, and brute-force throttling are Supabase Auth's
+- **Supabase Auth, email + password.** Three Server Actions in `actions/auth.ts`
+  — `signUp` (→ `/profile` onboarding), `signIn` (→ `/requests`), `signOut`
+  (clears the cookie → `/login`). Failed login returns a generic "email or
+  password incorrect" (no hint which was wrong).
+- **Sessions are cookie-based via `@supabase/ssr`.** The middleware (`proxy.ts`
+  → `updateSession`) calls `getUser()` on every matched request, which refreshes
+  an expired access token and re-writes the cookie; every Server Component /
+  Server Action builds a per-request client from those cookies — so the user's
+  **JWT** rides every DB and storage call, and Postgres sees `auth.uid()` = that
+  user (this is the hinge of the RLS model).
+- **Cookie flags** (the library's hardened defaults, which we rely on rather than
+  hand-set): **HttpOnly** — JS cannot read the token, so a hypothetical XSS still
+  can't steal the session; **Secure** — HTTPS-only in production; **SameSite=Lax**
+  — the browser won't attach the cookie to cross-site subrequests (CSRF defense,
+  see §7). The token is a short-lived signed JWT (`sub` = user id, `role`, `exp`)
+  plus a refresh token used transparently by the middleware.
+- Passwords: minimum 8 characters (zod + form attribute); **hashing is bcrypt
+  inside Supabase (GoTrue)** — we never store, compare, or log a raw password.
+  Token rotation and brute-force throttling are likewise Supabase Auth's
   responsibility, not custom code — deliberately, because hand-rolled auth is
   the classic way to get this wrong.
 - **Email confirmation is OFF for the MVP** (demo-day reliability, no SMTP
@@ -106,8 +119,23 @@ Three rings, outermost to innermost (each mirrors the same bounds):
    indexes, and RPC-body validation (photo paths must be real objects in the
    caller's own folder — X6).
 
-React escapes all rendered content by default and the codebase contains no
-`dangerouslySetInnerHTML` — stored-XSS via titles/messages/notes dies at render.
+### The three named web-security threats
+
+- **XSS (cross-site scripting)** — React escapes all rendered content by default
+  and the codebase contains **no `dangerouslySetInnerHTML`**, so stored-XSS via
+  titles/messages/notes is inert text at render, never executed. Auth cookies are
+  **HttpOnly**, so even a hypothetical XSS can't read the session token.
+- **SQL injection** — **structurally impossible in our code**: we write no
+  dynamic SQL and no string concatenation into queries. All access is either the
+  Supabase query builder (parameterised) or `SECURITY DEFINER` RPCs called with
+  **typed, bound arguments** (`supabase.rpc(name, {arg: value})`); inside the
+  functions `search_path` is pinned. Postgres receives values as parameters,
+  never as concatenated SQL text.
+- **CSRF (cross-site request forgery)** — writes are Next.js **Server Actions**:
+  same-origin POSTs with a framework-encrypted action identifier, so a
+  third-party page can't forge a call, and there is no REST endpoint to target.
+  Session cookies are **SameSite=Lax**, so the browser won't attach them to
+  cross-site subrequests. (See §7.)
 
 ## 7. Protecting API Calls
 
