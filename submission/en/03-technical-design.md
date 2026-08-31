@@ -217,7 +217,7 @@ RLS is enabled on all seven tables (`alter table … enable row level security`)
 No table grants anything to `anon` — every policy targets `authenticated`.
 There is deliberately **no INSERT policy** on `help_requests`, `request_photos`,
 and `ratings`: those inserts happen only inside SECURITY DEFINER RPCs, which is
-what makes their invariants (≥1 photo, atomic status flip) unskippable.
+what makes their invariants (atomic status flip) unskippable.
 
 ### Helper function
 
@@ -307,8 +307,7 @@ No DELETE — withdrawn offers stay as history (and as re-offer bookkeeping).
 | `photos_select` (SELECT) | `exists (select 1 from public.help_requests r where r.id = request_id)` | Mirrors the parent request's visibility automatically: the subquery is itself RLS-filtered per caller, so photos of hidden/closed requests disappear for exactly the users the request disappears for |
 
 No INSERT/UPDATE/DELETE: photos are created by the RPC and are **immutable
-afterwards** — a deliberate MVP simplification (editing photos would need
-cross-row "never below one photo" enforcement; the edit flow changes text fields
+afterwards** — a deliberate MVP simplification (the edit flow changes text fields
 only, spec-consistent).
 
 ### `ratings`
@@ -375,10 +374,14 @@ for a *hidden* request tells a probing caller the row exists. The rule: **raise
 keeps the §10 promise — denied and missing are indistinguishable.
 
 ```sql
--- 3.1 Create request + photos atomically; enforce ≥1 photo and path ownership.
+-- 3.1 Create request + photos atomically; photos optional (0–5) and, when
+-- supplied, path ownership is enforced.
 -- ⚠️ SUPERSEDED SIGNATURE: the p_payment_type parameter (and its use in the
 -- INSERT below) was REMOVED in migration 0011. The live RPC takes no pricing
 -- argument — a request has no paid/volunteer intent; pricing lives on offers.
+-- ⚠️ SUPERSEDED CONSTRAINT: migration 0015 made photos OPTIONAL (0–5) and
+-- REMOVED the photos_required check shown below; the `photos_required` raise no
+-- longer exists. This illustrative block is kept for context only.
 create or replace function public.create_request_with_photos(
   p_title text, p_description text, p_category text,
   p_payment_type public.payment_type,   -- removed in 0011
@@ -398,11 +401,9 @@ begin
     raise exception 'location_required';
   end if;
 
-  -- deduplicate, then bound: 1–5 distinct photos
+  -- deduplicate, then bound: 0–5 distinct photos (photos optional since 0015;
+  -- the photos_required raise shown here was removed in migration 0015)
   select array_agg(distinct p) into v_paths from unnest(p_photo_paths) as p;
-  if v_paths is null or array_length(v_paths, 1) < 1 then
-    raise exception 'photos_required';
-  end if;
   if array_length(v_paths, 1) > 5 then
     raise exception 'too_many_photos';
   end if;
@@ -849,7 +850,7 @@ create trigger on_offer_insert before insert on public.offers
 | Profile (public+private) | Signup trigger | Public row: anyone signed-in; private row: owner | Owner (name, phone, location); flags via `review_application` / `revoke_verification` only | Cascade with account |
 | Verification application | Applicant (INSERT policy) | Applicant + admins | Decision via `review_application` RPC only | Never (audit trail) |
 | Help request | `create_request_with_photos` RPC | Feed rule / owner / selected helper / admin | Owner content-edit (open/has_offers); transitions via RPCs; `is_paid` via `mark_paid` RPC | Never — `cancelled` is a state; rows keep offer/rating history |
-| Request photo | Same RPC (≥1, ≤5) | Mirrors parent request | Never (immutable set) | Cascade with request |
+| Request photo | Same RPC (0–5) | Mirrors parent request | Never (immutable set) | Cascade with request |
 | Offer | Helper (INSERT policy) | Offer owner + request owner | Owner edit/withdraw while active; `selected`/`closed` via RPCs | Never — withdrawn is a state |
 | Rating | `submit_rating` RPC | Parties + admins on the base table; everyone else via the `helper_ratings` view (no rater linkage) | Never | Never |
 
@@ -882,7 +883,7 @@ type ActionResult<T = void> =
 | `forbidden` | Caller lacks the right | "אין לך הרשאה לפעולה זו" |
 | `invalid_state` | State machine forbids the transition | "הפעולה אינה זמינה במצב הנוכחי" |
 | `offer_not_active` | Assign raced a withdrawal | "ההצעה כבר אינה זמינה — רעננו את העמוד" |
-| `photos_required` / `too_many_photos` | Photo count out of 1–5 | "יש לצרף 1–5 תמונות" |
+| `too_many_photos` | More than 5 photos supplied (photos are optional; `photos_required` no longer raised since migration 0015) | "ניתן לצרף עד 5 תמונות" |
 | `photo_not_uploaded` | A photo path has no uploaded object behind it | "העלאת התמונות נכשלה — נסו שוב" |
 | `location_required` | Request published without coordinates | "יש לאשר מיקום לבקשה" |
 | `invalid_price` | Final price out of range (`set_final_price`) | "סכום לא תקין" |
@@ -950,7 +951,7 @@ C4 fallback). The viewer's own location comes from their `profiles_private` row
 | `RequestCard`, `RequestList` | Server | Feed + my-requests rendering; distance chip |
 | `RequestDetail` | Server | Composes photos, status panel, offers/rating/contact per role |
 | `RequestForm` | Client | Create/edit; zod client-parse; wraps `PhotoUploader` |
-| `PhotoUploader` | Client | Direct-to-storage upload, 1–5 files, size/type checks, returns paths |
+| `PhotoUploader` | Client | Direct-to-storage upload, up to 5 files (optional), size/type checks, returns paths |
 | `OfferList`, `OfferCard` | Server | Owner sees all offers + helper badges/ratings; helper sees own |
 | `OfferForm`, `WithdrawButton` | Client | Offer create/edit/withdraw |
 | `AssignButton` | Client | Confirmation dialog → `assignOffer` |
@@ -1000,7 +1001,7 @@ the same bounds for instant feedback. DB constraints (§1.2) are the last line:
 | `profileSchema` | display_name 1–40; phone `^0\d{8,9}$` (optional until verification); lat/lng ranges, both-or-neither |
 | `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; phone required here (`^0\d{8,9}$` — mirrored by the `identity_requires_phone` CHECK); doc_path optional |
 | `professionalApplicationSchema` | doc_path required (mirrored by the `professional_requires_doc` CHECK) |
-| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; lat/lng required (NOT NULL columns); photo paths 1–5 |
+| `requestSchema` | title 3–80; description 10–2000; category ∈ fixed list; lat/lng required (NOT NULL columns); photo paths 0–5 (optional) |
 | `offerSchema` | message 5–1000; pricingMode ∈ {fixed, volunteer, after_job}; price required iff mode=fixed (0 < price ≤ 99999.99) |
 | `finalPriceSchema` | 0 < price ≤ 99999.99 — the after_job final amount set post-completion by the selected helper |
 | `ratingSchema` | stars int 1–5; note ≤ 500 |

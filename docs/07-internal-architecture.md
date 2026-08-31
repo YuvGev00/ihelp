@@ -60,8 +60,8 @@ directly to prove it."**
 `open → has_offers → assigned → completed → rated` (+ `cancelled` terminal):
 
 1. **Post** — `RequestForm` → `actions/requests.ts#createRequest` → RPC
-   `create_request_with_photos`: verifies identity flag, 1–5 *deduped* photo
-   paths, each a real object in the caller's own storage folder; inserts
+   `create_request_with_photos`: verifies identity flag, 0–5 *deduped* photo
+   paths (optional), each a real object in the caller's own storage folder; inserts
    request + photos in one transaction. *No INSERT policy exists on these
    tables — the RPC is the only door.*
 2. **Offer** — direct insert on `offers`; the INSERT policy pins verified

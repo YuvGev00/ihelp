@@ -22,8 +22,8 @@ export async function createRequest(
   if (!parsed.success) return { ok: false, fieldErrors: zodFieldErrors(parsed.error) };
 
   const supabase = await createClient();
-  // Atomic insert of request + photos; the RPC re-verifies photo ownership,
-  // existence, and the >=1 photo rule (the DB is the authority).
+  // Atomic insert of request + photos; the RPC re-verifies photo ownership
+  // and existence for any supplied photos (0–5 allowed — the DB is the authority).
   const { data, error } = await supabase.rpc("create_request_with_photos", {
     p_title: parsed.data.title,
     p_description: parsed.data.description,

@@ -217,7 +217,7 @@ RLS מופעל על כל שבע הטבלאות (`alter table … enable row leve
 אף טבלה אינה מעניקה דבר ל-`anon` — כל מדיניות מכוונת ל-`authenticated`.
 אין במכוון **שום מדיניות INSERT** על `help_requests`, `request_photos`
 ו-`ratings`: ה-inserts הללו מתרחשים רק בתוך RPCs מסוג SECURITY DEFINER, וזה
-מה שהופך את האינווריאנטים שלהם (≥1 תמונה, החלפת מצב אטומית) לבלתי-ניתנים-לעקיפה.
+מה שהופך את האינווריאנטים שלהם (החלפת מצב אטומית) לבלתי-ניתנים-לעקיפה.
 
 ### פונקציית עזר
 
@@ -307,8 +307,7 @@ $$;
 | `photos_select` (SELECT) | `exists (select 1 from public.help_requests r where r.id = request_id)` | משקף את נראוּת הבקשה-האב אוטומטית: תת-השאילתה עצמה מסוננת-RLS לפי הקורא, ולכן תמונות של בקשות מוסתרות/סגורות נעלמות בדיוק עבור המשתמשים שהבקשה נעלמת עבורם |
 
 אין INSERT/UPDATE/DELETE: תמונות נוצרות על ידי ה-RPC והן **בלתי-ניתנות-לשינוי
-לאחר מכן** — פישוט MVP מכוון (עריכת תמונות הייתה מצריכה אכיפה בין-שורתית של
-"לעולם לא מתחת לתמונה אחת"; זרימת העריכה משנה שדות טקסט
+לאחר מכן** — פישוט MVP מכוון (זרימת העריכה משנה שדות טקסט
 בלבד, בהתאם למפרט).
 
 ### `ratings`
@@ -375,10 +374,14 @@ create policy "docs_read" on storage.objects for select to authenticated
 זה שומר על הבטחת §10 — מסורב וחסר בלתי-ניתנים-להבחנה.
 
 ```sql
--- 3.1 Create request + photos atomically; enforce ≥1 photo and path ownership.
+-- 3.1 Create request + photos atomically; photos optional (0–5) and, when
+-- supplied, path ownership is enforced.
 -- ⚠️ הוחלף (SUPERSEDED) — חתימה: הפרמטר p_payment_type (והשימוש בו ב-
 -- INSERT להלן) הוסר במיגרציה 0011. ה-RPC החי אינו מקבל ארגומנט תמחור
 -- כלשהו — לבקשה אין כוונת בתשלום/התנדבות; התמחור חי על ההצעות.
+-- ⚠️ הוחלף (SUPERSEDED) — אילוץ: מיגרציה 0015 הפכה את התצלומים לאופציונליים
+-- (0–5) והסירה את בדיקת photos_required המוצגת להלן; ה-raise של
+-- photos_required כבר אינו קיים. בלוק זה נשמר להמחשה בלבד.
 create or replace function public.create_request_with_photos(
   p_title text, p_description text, p_category text,
   p_payment_type public.payment_type,   -- removed in 0011
@@ -398,11 +401,9 @@ begin
     raise exception 'location_required';
   end if;
 
-  -- deduplicate, then bound: 1–5 distinct photos
+  -- deduplicate, then bound: 0–5 distinct photos (photos optional since 0015;
+  -- the photos_required raise shown here was removed in migration 0015)
   select array_agg(distinct p) into v_paths from unnest(p_photo_paths) as p;
-  if v_paths is null or array_length(v_paths, 1) < 1 then
-    raise exception 'photos_required';
-  end if;
   if array_length(v_paths, 1) > 5 then
     raise exception 'too_many_photos';
   end if;
@@ -849,7 +850,7 @@ create trigger on_offer_insert before insert on public.offers
 | פרופיל (ציבורי+פרטי) | טריגר ההרשמה | שורה ציבורית: כל מחובר; שורה פרטית: הבעלים | הבעלים (שם, טלפון, מיקום); דגלים רק דרך `review_application` / `revoke_verification` | שרשור עם החשבון |
 | בקשת אימות | המבקש (מדיניות INSERT) | המבקש + מנהלים | החלטה רק דרך ה-RPC `review_application` | לעולם לא (מסלול ביקורת) |
 | בקשת עזרה | ה-RPC `create_request_with_photos` | חוק הפיד / הבעלים / העוזר הנבחר / מנהל | עריכת תוכן של הבעלים (open/has_offers); מעברים דרך RPCs; `is_paid` דרך ה-RPC `mark_paid` | לעולם לא — `cancelled` הוא מצב; שורות שומרות היסטוריית הצעה/דירוג |
-| תמונת בקשה | אותו RPC (≥1, ≤5) | משקף את הבקשה-האב | לעולם לא (קבוצה בלתי-ניתנת-לשינוי) | שרשור עם הבקשה |
+| תמונת בקשה | אותו RPC (0–5) | משקף את הבקשה-האב | לעולם לא (קבוצה בלתי-ניתנת-לשינוי) | שרשור עם הבקשה |
 | הצעה | העוזר (מדיניות INSERT) | בעל ההצעה + בעל הבקשה | הבעלים עורך/מושך כל עוד active; `selected`/`closed` דרך RPCs | לעולם לא — withdrawn הוא מצב |
 | דירוג | ה-RPC `submit_rating` | צדדים + מנהלים על הטבלה הבסיסית; כל השאר דרך ה-view `helper_ratings` (ללא קישוריות למדרג) | לעולם לא | לעולם לא |
 
@@ -882,7 +883,7 @@ type ActionResult<T = void> =
 | `forbidden` | לקורא אין את ההרשאה | "אין לך הרשאה לפעולה זו" |
 | `invalid_state` | מכונת-המצבים אוסרת את המעבר | "הפעולה אינה זמינה במצב הנוכחי" |
 | `offer_not_active` | Assign התנגש עם משיכה | "ההצעה כבר אינה זמינה — רעננו את העמוד" |
-| `photos_required` / `too_many_photos` | מספר תמונות מחוץ ל-1–5 | "יש לצרף 1–5 תמונות" |
+| `too_many_photos` | סופקו יותר מ-5 תמונות (התצלומים אופציונליים; `photos_required` כבר אינו מופעל החל ממיגרציה 0015) | "ניתן לצרף עד 5 תמונות" |
 | `photo_not_uploaded` | לנתיב תמונה אין אובייקט שהועלה מאחוריו | "העלאת התמונות נכשלה — נסו שוב" |
 | `location_required` | בקשה פורסמה ללא קואורדינטות | "יש לאשר מיקום לבקשה" |
 | `invalid_price` | מחיר סופי מחוץ לטווח (`set_final_price`) | "סכום לא תקין" |
@@ -950,7 +951,7 @@ C4 fallback). מיקומו-שלו של הצופה מגיע משורת `profiles_
 | `RequestCard`, `RequestList` | Server | הצגת פיד + הבקשות-שלי; צ'יפ מרחק |
 | `RequestDetail` | Server | מרכיב תמונות, פאנל סטטוס, הצעות/דירוג/קשר לפי תפקיד |
 | `RequestForm` | Client | יצירה/עריכה; zod client-parse; עוטף את `PhotoUploader` |
-| `PhotoUploader` | Client | העלאה ישירה-לאחסון, 1–5 קבצים, בדיקות גודל/סוג, מחזיר נתיבים |
+| `PhotoUploader` | Client | העלאה ישירה-לאחסון, עד 5 קבצים (אופציונלי), בדיקות גודל/סוג, מחזיר נתיבים |
 | `OfferList`, `OfferCard` | Server | הבעלים רואה את כל ההצעות + תגי/דירוגי עוזרים; העוזר רואה את שלו |
 | `OfferForm`, `WithdrawButton` | Client | יצירה/עריכה/משיכה של הצעה |
 | `AssignButton` | Client | דיאלוג אישור → `assignOffer` |
@@ -999,7 +1000,7 @@ Server Action; בצד-לקוח, מאפייני constraint-validation נייטי�
 | `profileSchema` | display_name 1–40; טלפון `^0\d{8,9}$` (אופציונלי עד לאימות); טווחי lat/lng, שניהם-או-אף-אחד |
 | `identityApplicationSchema` | full_name 2–60; self_description ≤ 500; טלפון נדרש כאן (`^0\d{8,9}$` — משוקף על ידי ה-CHECK `identity_requires_phone`); doc_path אופציונלי |
 | `professionalApplicationSchema` | doc_path נדרש (משוקף על ידי ה-CHECK `professional_requires_doc`) |
-| `requestSchema` | title 3–80; description 10–2000; category ∈ רשימה קבועה; lat/lng נדרשים (עמודות NOT NULL); נתיבי תמונה 1–5 |
+| `requestSchema` | title 3–80; description 10–2000; category ∈ רשימה קבועה; lat/lng נדרשים (עמודות NOT NULL); נתיבי תמונה 0–5 (אופציונלי) |
 | `offerSchema` | message 5–1000; pricingMode ∈ {fixed, volunteer, after_job}; price נדרש רק אם mode=fixed (0 < price ≤ 99999.99) |
 | `finalPriceSchema` | 0 < price ≤ 99999.99 — הסכום הסופי של after_job הנקבע לאחר-השלמה על ידי העוזר הנבחר |
 | `ratingSchema` | stars int 1–5; note ≤ 500 |

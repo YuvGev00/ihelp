@@ -220,7 +220,7 @@ constraints.
 
 | RPC | What it does (one transaction each) | Why not plain RLS |
 |---|---|---|
-| `create_request_with_photos(payload, photo_paths[])` | Inserts the request and its photo rows; validates ≥1 path, each inside the caller's own storage folder | Two-table insert must be atomic (supabase-js has no client-side transactions) and "≥1 photo" is a cross-table minimum no CHECK constraint can express |
+| `create_request_with_photos(payload, photo_paths[])` | Inserts the request and its photo rows; photos are optional (validates at most 5 paths, each inside the caller's own storage folder, when any are supplied) | Two-table insert must be atomic (supabase-js has no client-side transactions), and the ≤5 bound plus per-path ownership are cross-table checks no single CHECK constraint can express |
 | `assign_offer(request_id, offer_id)` | Guarded updates: request `has_offers → assigned` + `assigned_at`, chosen offer → *selected* **only if still active**, all competing offers → *closed*; raises (rolls back) if any guard matches zero rows — the row lock serializes a concurrent withdraw | Atomic pivotal moment; closes the withdraw-vs-assign race; RLS cannot authorize the caller to write competitors' offers (spec §7 C6) |
 | `confirm_completion(request_id)` | Sets the caller's own completion flag (side derived from caller identity); flips status to *completed* + `completed_at` when both flags true | "Each side sets only its own flag" is an old-vs-new column rule RLS UPDATE policies cannot express (spec §9.2) |
 | `cancel_request(request_id)` | Owner + pre-completion check; sets *cancelled* + `cancelled_at`; closes all active — and any selected — offers | Same shape as `assign_offer`: atomic transition + cross-owner offer writes (spec §9.1) |
@@ -360,7 +360,7 @@ literal non-matching URL.)
 | `updateLocation` | lat/lng schema | update own `profiles_private` coordinates (called by the geolocation capture component) |
 | `submitIdentityApplication` | application schema | insert `verification_applications` (kind=identity, incl. the phone); on approval `review_application` copies the **reviewed** phone to `profiles_private` (spec §8.2 — the contact-reveal RPC depends on it) |
 | `submitProfessionalApplication` | application schema | insert `verification_applications` (kind=professional; INSERT policy requires approved identity) |
-| `createRequest` | request schema (≥1 photo path) | **RPC `create_request_with_photos`** |
+| `createRequest` | request schema (0–5 photo paths) | **RPC `create_request_with_photos`** |
 | `updateRequest` | request schema | update own request — content columns only (RLS: owner + status ∈ {open, has_offers}; system columns trigger-guarded) |
 | `cancelRequest` | id | **RPC `cancel_request`** |
 | `markPaid` | id | **RPC `mark_paid`** |

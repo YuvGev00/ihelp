@@ -171,8 +171,8 @@ Follow this as a click-through, or read it to understand the system:
 3. **Browse** (`/requests`) → the feed shows open requests near you, sorted by
    distance (computed in the app, no paid maps), with category + distance filters
    and a live map of pins.
-4. **Post a request** (`/requests/new`) → title, description, category, 1–5 photos
-   (uploaded straight to storage), and a map-confirmed location.
+4. **Post a request** (`/requests/new`) → title, description, category, up to 5
+   photos (optional, uploaded straight to storage), and a map-confirmed location.
 5. **Helpers offer** → a verified helper opens your request and submits an offer,
    choosing one of three pricing stances (fixed / volunteer / price-after-job).
    Offers are **sealed** — a helper never sees competitors' offers.

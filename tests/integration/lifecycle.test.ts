@@ -164,6 +164,35 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
     expect(viewRows?.some((r) => r.stars === 5)).toBe(true);
   }, 60_000);
 
+  it("F1b: a request can be created with NO photos (photos are optional)", async () => {
+    // Photos are optional (migration 0015). Passing an empty array must succeed,
+    // and the ownership/existence checks must be skipped, not misfire on 0.
+    const { data: id, error } = await requester.client.rpc(
+      "create_request_with_photos",
+      {
+        p_title: "בקשה בלי תמונה",
+        p_description: "תיאור ארוך מספיק לבדיקה ללא תמונות כלל",
+        p_category: "errands",
+        p_lat: 32.08,
+        p_lng: 34.78,
+        p_photo_paths: [],
+      }
+    );
+    expect(error).toBeNull();
+    const { data: row } = await requester.client
+      .from("help_requests")
+      .select("status")
+      .eq("id", id as string)
+      .single();
+    expect(row?.status).toBe("open");
+    // And it truly has zero photo rows.
+    const { count } = await requester.client
+      .from("request_photos")
+      .select("*", { count: "exact", head: true })
+      .eq("request_id", id as string);
+    expect(count).toBe(0);
+  });
+
   it("F7: withdrawing the last active offer returns the request to open", async () => {
     const requestId = await createRequestFixture(requester);
     const { data: offer } = await helperA.client

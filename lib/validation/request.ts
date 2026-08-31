@@ -23,7 +23,7 @@ export const requestSchema = z.object({
     .min(1, "יש לאשר מיקום לבקשה")
     .transform(Number)
     .pipe(z.number().min(-180).max(180)),
-  photoPaths: z.array(z.string().min(1)).min(1, "יש לצרף לפחות תמונה אחת").max(5, "עד 5 תמונות"),
+  photoPaths: z.array(z.string().min(1)).max(5, "עד 5 תמונות").default([]),
 });
 
 /** Content-only edit: transitions and photos are not editable (design 03 §2, §4). */

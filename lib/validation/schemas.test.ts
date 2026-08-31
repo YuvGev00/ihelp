@@ -43,8 +43,14 @@ describe("requestSchema — invalid inputs (assignment §3.4)", () => {
     expect(r2.success).toBe(false);
   });
 
-  it("rejects photo counts of 0 and 6", () => {
-    expect(requestSchema.safeParse({ ...validRequest, photoPaths: [] }).success).toBe(false);
+  it("accepts 0 photos (optional) and rejects 6", () => {
+    // Photos are optional (0–5): an empty array is valid.
+    expect(requestSchema.safeParse({ ...validRequest, photoPaths: [] }).success).toBe(true);
+    // The field may even be omitted entirely (defaults to []).
+    const noPhotos = { ...validRequest };
+    delete (noPhotos as { photoPaths?: unknown }).photoPaths;
+    expect(requestSchema.safeParse(noPhotos).success).toBe(true);
+    // The upper bound still holds.
     expect(
       requestSchema.safeParse({
         ...validRequest,

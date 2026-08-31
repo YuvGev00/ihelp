@@ -53,6 +53,7 @@ The full request lifecycle, exercised through real clients as real users:
 | # | Scenario | Proves |
 |---|---|---|
 | F1 | Verified user creates a request via `create_request_with_photos` (with an uploaded photo) → status `open`, photos attached | The only write path into `help_requests` works and enforces its invariants |
+| F1b | Verified user creates a request with **no photos** → status `open`, zero photos attached | Photos are optional (0–5); the write path accepts a photo-less request |
 | F2 | Second verified user submits an offer → request flips to `has_offers` (trigger T2) | Offer flow + automatic status sync |
 | F3 | Owner calls `assign_offer` → request `assigned`, chosen offer `selected`, competitor offer `closed` | The atomic pivotal moment, including competitor closure |
 | F4 | Both sides call `confirm_completion` → flags set per caller; status flips to `completed` only after the second call | Dual-sided completion semantics |
@@ -106,7 +107,7 @@ Constraints and triggers as the last line of defense:
 
 Every schema rejects what the DB would reject — same bounds, friendlier
 message: title/description/message length bounds, bad phone formats, stars
-outside 1–5, offer-price bounds, photo count 0 and 6, **absent
+outside 1–5, offer-price bounds, photo count (accepts 0, rejects 6 — photos are optional, max 5), **absent
 location (the (0,0) "Null Island" regression)**, absent optional fields
 arriving as `null` (the FormData regression class found in review).
 
@@ -119,7 +120,7 @@ arriving as `null` (the FormData regression class found in review).
 | X3 | `mark_paid` twice, or (F8) before an agreed amount exists (unpriced `after_job` offer) | `invalid_state` |
 | X4 | Approving a professional application after identity was revoked | `invalid_state` |
 | X5 | Rejection without a note | `note_required` |
-| X6 | Photo paths pointing at another user's folder / nonexistent objects | `forbidden` / `photo_not_uploaded` |
+| X6 | When photos are supplied, paths pointing at another user's folder / nonexistent objects | `forbidden` / `photo_not_uploaded` |
 
 ### 3.6 Basic UI tests (component + E2E)
 
