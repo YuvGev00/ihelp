@@ -20,11 +20,11 @@
 | 3 | **מסמך אפיון מוצר** | [`01-product-spec.md`](01-product-spec.md) |
 | 4 | **מסמך תכנון טכני** | [`03-technical-design.md`](03-technical-design.md) |
 | 5 | **מסמך אפיון בדיקות** | [`04-testing-spec.md`](04-testing-spec.md) |
-| 6 | **קוד הבדיקות** | במאגר: `tests/`, `e2e/`, `lib/*.test.ts` — 61 בדיקות Vitest + בדיקת Playwright E2E אחת (ראו פריט 5 למיפוי) |
+| 6 | **קוד הבדיקות** | במאגר: `tests/`, `e2e/`, `lib/*.test.ts` — 62 בדיקות Vitest + בדיקת Playwright E2E אחת (ראו פריט 5 למיפוי) |
 | 7 | **מסמך סקייל בסיסי** | [`05-scale.md`](05-scale.md) |
 | 8 | **מסמך אבטחה בסיסית** | [`06-security.md`](06-security.md) |
 | 9 | **הוראות הרצה מקומית** | [`README.md`](README.md) (סעיף "Running locally") |
-| 10 | **מצגת קצרה (10–15 דק')** | [`08-presentation.md`](08-presentation.md) — טקסט דיבור + תסריט הדגמה *(קובץ השקופיות הוא קובץ נפרד)* |
+| 10 | **מסמך "בדיקה קלה"** (חובת ההצגה בוטלה על ידי המרצה) | [`12-easy-review.md`](12-easy-review.md) — מה נבנה + מסלול בדיקה של 5 דקות. טקסט הדיבור להצגה נשאר גם ב-[`08-presentation.md`](08-presentation.md). |
 
 ---
 

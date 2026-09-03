@@ -2,7 +2,7 @@ import { z } from "zod";
 import { CATEGORY_KEYS } from "@/lib/categories";
 
 /** Mirrors the DB constraints on help_requests (design doc 03 §1.2, §9).
- *  payment_type is the requester's INTENT only — the price lives on offers. */
+ *  A request carries no pricing — pricing is the helper's, on each offer. */
 export const requestSchema = z.object({
   title: z.string().trim().min(3, "כותרת — 3 תווים לפחות").max(80, "עד 80 תווים"),
   description: z

@@ -51,7 +51,7 @@ directly to prove it."**
 | `lib/validation/*.ts` | zod schemas mirroring DB constraints | Input validation |
 | `lib/geo.ts` | Haversine, ~15 lines | "Why no PostGIS" |
 | `components/MapView / RequestsMap / MapPicker` | Leaflet maps: request location, feed pins, click-to-pick | Maps, the OpenStreetMap dependency |
-| `tests/integration/*.test.ts` | 30 tests attacking the DB as real users | Security proof |
+| `tests/integration/*.test.ts` | 31 tests attacking the DB as real users | Security proof |
 | `e2e/core-flow.spec.ts` | Two-browser core loop | "Show me it works" |
 | `scripts/seed.ts` | Demo data, every lifecycle state | Demo prep |
 
@@ -132,8 +132,8 @@ directly to prove it."**
 
 ## 6. Test Story (30 seconds)
 
-61 vitest tests + 1 Playwright spec. The pyramid is deliberately inverted
-toward **integration**: 30 tests create real users against a real Postgres and
+62 vitest tests + 1 Playwright spec. The pyramid is deliberately inverted
+toward **integration**: 31 tests create real users against a real Postgres and
 attack every permission as the wrong user — the suite's centerpiece is denial,
 not happy paths, because the product's claim is "the database says no."
 E2E drives the full Hebrew UI with two browsers in 10 seconds.

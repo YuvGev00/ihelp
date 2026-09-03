@@ -357,7 +357,7 @@ bookmarkable with zero extra code.
 
 **What:** automated proof the product works *and* is safe.
 
-**How & where** (`tests/`, `e2e/`, co-located `*.test.ts`): **62 tests** (61
+**How & where** (`tests/`, `e2e/`, co-located `*.test.ts`): **63 tests** (62
 Vitest + 1 Playwright E2E, verified with `npx vitest run`).
 - **Integration — permissions** (`permissions.test.ts`, P1–P15): the *attack*
   suite — each tries a forbidden action as the wrong user and asserts **denial**.
@@ -377,9 +377,9 @@ Vitest + 1 Playwright E2E, verified with `npx vitest run`).
 to prove the *database* denies the wrong user, which is exactly what the grade
 rewards.
 
-**Count breakdown:** 61 Vitest tests — integration 30 (lifecycle 10 +
+**Count breakdown:** 62 Vitest tests — integration 31 (lifecycle 11 +
 permissions 20), geo 6, validation 15, component UI 10 — plus **1 Playwright
-E2E** = **62 total**.
+E2E** = **63 total**.
 
 ---
 

@@ -40,9 +40,9 @@ Integration and E2E tests **skip automatically** when no local stack is
 detected (`SUPABASE_URL` absent), so `npm test` always passes in a bare
 checkout while the full suite runs where it matters.
 
-The suite totals **61 Vitest tests** across 5 files — 30 integration
-(lifecycle 10 + permissions 20), geo 6, validation schemas 15, component UI 10 —
-plus 1 Playwright E2E spec, for **62 automated tests** in all.
+The suite totals **62 Vitest tests** across 5 files — 31 integration
+(lifecycle 11 + permissions 20), geo 6, validation schemas 15, component UI 10 —
+plus 1 Playwright E2E spec, for **63 automated tests** in all.
 
 ## 3. What Is Tested and Why (assignment stage-6 checklist)
 
@@ -61,6 +61,7 @@ The full request lifecycle, exercised through real clients as real users:
 | F6 | Owner calls `cancel_request` mid-flow → request `cancelled`, live offers `closed` | The terminal escape hatch |
 | F7 | Withdraw last active offer → request returns to `open` | The has_offers↔open cycle |
 | F8 | `after_job` offer: no price up front; after dual completion the **selected helper** calls `set_final_price` (a stranger gets `not_found`; `mark_paid` before pricing and a second `set_final_price` both get `invalid_state`) | Deferred pricing — the agreed amount is set once, by the selected helper only, post-completion |
+| F9 | `get_helper_stats` returns correct aggregates (completed jobs, rating count/avg, star distribution, per-category counts) for a helper with a completed + rated job; the `helper_ratings` view exposes `category` but selecting `rater_id`/`request_id` fails (columns absent) | Reputation aggregates are computed server-side and stay anonymized — category context without rater/request linkage |
 | E2E | The F1–F5 chain driven through the real UI by two browser sessions | The product works as users experience it |
 
 ### 3.2 Permission tests — different users attempting forbidden actions (integration)

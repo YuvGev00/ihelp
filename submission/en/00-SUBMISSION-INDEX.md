@@ -20,11 +20,11 @@ list. Each of the 10 required items is mapped below to where it lives.
 | 3 | **Product specification document** | [`01-product-spec.md`](01-product-spec.md) |
 | 4 | **Technical design document** | [`03-technical-design.md`](03-technical-design.md) |
 | 5 | **Testing specification document** | [`04-testing-spec.md`](04-testing-spec.md) |
-| 6 | **Test code** | In the repo: `tests/`, `e2e/`, `lib/*.test.ts` — 61 Vitest + 1 Playwright E2E (see item 5 for the map) |
+| 6 | **Test code** | In the repo: `tests/`, `e2e/`, `lib/*.test.ts` — 62 Vitest + 1 Playwright E2E (see item 5 for the map) |
 | 7 | **Basic scale document** | [`05-scale.md`](05-scale.md) |
 | 8 | **Basic security document** | [`06-security.md`](06-security.md) |
 | 9 | **Local-run instructions** | [`README.md`](README.md) (section "Running locally") |
-| 10 | **Short presentation (10–15 min)** | [`08-presentation.md`](08-presentation.md) — talk track + demo script *(the slide deck is a separate file)* |
+| 10 | **"Easy review" document** (the presentation was waived by the instructor) | [`12-easy-review.md`](12-easy-review.md) — what was built + a 5-minute review path. The in-person talk track also remains in [`08-presentation.md`](08-presentation.md). |
 
 ---
 

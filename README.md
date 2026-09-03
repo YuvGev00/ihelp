@@ -13,8 +13,12 @@ helpers are rated after completion.
 
 ## Documentation
 
+> **Reviewing this project?** Start with **[docs/12-easy-review.md](docs/12-easy-review.md)** —
+> what was built + a 5-minute review path on the live site (Hebrew).
+
 | Doc | Content |
 |---|---|
+| [docs/12-easy-review.md](docs/12-easy-review.md) | **Easy-review guide** (Hebrew) — what was built + a 5-minute review path; the reviewer's entry point |
 | [docs/01-product-spec.md](docs/01-product-spec.md) | Product specification — problem, users, customer, goals, processes, state machine, permission matrix |
 | [docs/02-architecture.md](docs/02-architecture.md) | Architecture — components, technology choices, data flows, enforcement layers |
 | [docs/03-technical-design.md](docs/03-technical-design.md) | Technical design — full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |

@@ -60,3 +60,6 @@ Thumbs.db
 
 # Office temp lock files (created when a .pptx/.docx is open)
 ~$*
+
+# Assignment brief (instructor's doc — keep local, not in public repo)
+Internet Technologies.pdf

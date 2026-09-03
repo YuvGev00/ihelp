@@ -3,7 +3,7 @@
 **Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
 **Document:** 3 of 11 (Technical Design, assignment stage 4)
 **Depends on:** `01-product-spec.md` (rules), `02-architecture.md` (structure)
-**Status:** Draft for review
+**Status:** Final
 
 This document is the implementation blueprint. The SQL here *is* the schema —
 Phase 4 transcribes it into migrations. Every RLS policy carries the product-spec

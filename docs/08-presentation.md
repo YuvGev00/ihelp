@@ -113,12 +113,12 @@ Point at one concrete policy, e.g. `offers_select` (sealed bids: only the offer'
 owner and the request's owner can read it).
 
 ### Min 10–11 — Tests  *(§12: 9)*
-> "62 automated tests. The interesting ones are the **integration tests that
+> "63 automated tests. The interesting ones are the **integration tests that
 > attack the database as the wrong user** — they *try* the forbidden action and
 > assert it's denied. For example, a test where a user tries to make themselves
 > admin, and one for the assign-vs-withdraw race. Plus a Playwright end-to-end
 > test that drives the entire core loop through the real UI in two browser
-> sessions." Show `npx vitest run` output (61 passed) or the `tests/integration/`
+> sessions." Show `npx vitest run` output (62 passed) or the `tests/integration/`
 > permission tests, and mention the E2E.
 
 ### Min 11–12 — Scale  *(§12: 10)*
