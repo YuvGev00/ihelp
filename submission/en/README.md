@@ -13,19 +13,24 @@ helpers are rated after completion.
 
 ## Documentation
 
+> **New here? Start with [`00-SUBMISSION-INDEX.md`](00-SUBMISSION-INDEX.md)** — it maps
+> the 10 required submission items to their files, and lists the demo logins.
+
+This submission folder contains the required documents (in `en/` and `he/`):
+
 | Doc | Content |
 |---|---|
-| [docs/01-product-spec.md](docs/01-product-spec.md) | Product specification — problem, users, customer, goals, processes, state machine, permission matrix |
-| [docs/02-architecture.md](docs/02-architecture.md) | Architecture — components, technology choices, data flows, enforcement layers |
-| [docs/03-technical-design.md](docs/03-technical-design.md) | Technical design — full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
-| [docs/04-testing-spec.md](docs/04-testing-spec.md) | Testing specification — what is tested and why it proves the product works |
-| [docs/05-scale.md](docs/05-scale.md) | Scale — load analysis, indexes, pagination, limits and successors |
-| [docs/06-security.md](docs/06-security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
-| [docs/07-internal-architecture.md](docs/07-internal-architecture.md) | Internal guide — repo tour, flows, decision index (presentation prep) |
-| [docs/08-presentation.md](docs/08-presentation.md) | Presentation plan — 10–15 min outline + demo script |
-| [docs/09-project-walkthrough.md](docs/09-project-walkthrough.md) | Follow-along guide — setup, "is it up?" checks, demo logins, core flow |
-| [docs/10-file-reference.md](docs/10-file-reference.md) | File-by-file reference — every source file's purpose & implementation |
-| [docs/11-course-concepts-map.md](docs/11-course-concepts-map.md) | Course-concepts map — every taught concept → how/why/where in the code |
+| [`01-product-spec.md`](01-product-spec.md) | Product specification — problem, users, customer, goals, processes, state machine, permission matrix |
+| [`03-technical-design.md`](03-technical-design.md) | Technical design — full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
+| [`04-testing-spec.md`](04-testing-spec.md) | Testing specification — what is tested and why it proves the product works |
+| [`05-scale.md`](05-scale.md) | Scale — load analysis, indexes, pagination, limits and successors |
+| [`06-security.md`](06-security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
+| [`08-presentation.md`](08-presentation.md) | Presentation run-sheet — talk track + demo script |
+| [`12-easy-review.md`](12-easy-review.md) | Easy-review guide — what was built + a 5-minute review path |
+
+Additional deep-dive docs (architecture, internal guide, walkthrough, file
+reference, course-concepts map) live in the **`docs/` folder of the GitHub
+repository**: https://github.com/YuvGev00/ihelp/tree/main/docs
 
 ## Running locally
 

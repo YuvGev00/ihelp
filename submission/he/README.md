@@ -10,19 +10,24 @@ iHelp הופך את מודל חיפוש העזרה: מבקש מפרסם בקשת
 
 ## תיעוד
 
+> **חדשים כאן? התחילו מ-[`00-SUBMISSION-INDEX.md`](00-SUBMISSION-INDEX.md)** — הוא ממפה את
+> 10 פריטי ההגשה הנדרשים לקבצים שלהם, ומפרט את חשבונות ההדגמה.
+
+תיקיית הגשה זו מכילה את המסמכים הנדרשים (ב-`en/` וב-`he/`):
+
 | מסמך | תוכן |
 |---|---|
-| [docs/01-product-spec.md](docs/01-product-spec.md) | מפרט מוצר — בעיה, משתמשים, לקוח, יעדים, תהליכים, מכונת מצבים, מטריצת הרשאות |
-| [docs/02-architecture.md](docs/02-architecture.md) | ארכיטקטורה — רכיבים, בחירות טכנולוגיות, זרימות נתונים, שכבות אכיפה |
-| [docs/03-technical-design.md](docs/03-technical-design.md) | תכנון טכני — סכמת SQL מלאה, כל מדיניות RLS, גופי RPC, CRUD, ולידציה, טיפול בשגיאות, UX |
-| [docs/04-testing-spec.md](docs/04-testing-spec.md) | מפרט בדיקות — מה נבדק ולמה זה מוכיח שהמוצר עובד |
-| [docs/05-scale.md](docs/05-scale.md) | קנה מידה — ניתוח עומסים, אינדקסים, עימוד, מגבלות ופתרונות המשך |
-| [docs/06-security.md](docs/06-security.md) | אבטחה — שכבות אימות/הרשאה, סודות, משתני סביבה, סיכונים שנותרו |
-| [docs/07-internal-architecture.md](docs/07-internal-architecture.md) | מדריך פנימי — סיור במאגר הקוד, זרימות, אינדקס החלטות (הכנה למצגת) |
-| [docs/08-presentation.md](docs/08-presentation.md) | תוכנית מצגת — מתווה של 10–15 דקות + תסריט הדגמה |
-| [docs/09-project-walkthrough.md](docs/09-project-walkthrough.md) | מדריך צעד-אחר-צעד — התקנה, בדיקות "האם זה עובד?", כניסות להדגמה, זרימה מרכזית |
-| [docs/10-file-reference.md](docs/10-file-reference.md) | אסמכתה קובץ-אחר-קובץ — מטרתו ומימושו של כל קובץ מקור |
-| [docs/11-course-concepts-map.md](docs/11-course-concepts-map.md) | מפת מושגי הקורס — כל מושג שנלמד ← כיצד/מדוע/היכן בקוד |
+| [`01-product-spec.md`](01-product-spec.md) | מפרט מוצר — בעיה, משתמשים, לקוח, יעדים, תהליכים, מכונת מצבים, מטריצת הרשאות |
+| [`03-technical-design.md`](03-technical-design.md) | תכנון טכני — סכמת SQL מלאה, כל מדיניות RLS, גופי RPC, CRUD, ולידציה, טיפול בשגיאות, UX |
+| [`04-testing-spec.md`](04-testing-spec.md) | מפרט בדיקות — מה נבדק ולמה זה מוכיח שהמוצר עובד |
+| [`05-scale.md`](05-scale.md) | קנה מידה — ניתוח עומסים, אינדקסים, עימוד, מגבלות ופתרונות המשך |
+| [`06-security.md`](06-security.md) | אבטחה — שכבות אימות/הרשאה, סודות, משתני סביבה, סיכונים שנותרו |
+| [`08-presentation.md`](08-presentation.md) | דף הרצה למצגת — טקסט דיבור + תסריט הדגמה |
+| [`12-easy-review.md`](12-easy-review.md) | מדריך בדיקה קלה — מה נבנה + מסלול בדיקה של 5 דקות |
+
+מסמכי העמקה נוספים (ארכיטקטורה, מדריך פנימי, מדריך צעד-אחר-צעד, אסמכתת קבצים,
+מפת מושגי הקורס) נמצאים ב**תיקיית `docs/` במאגר ה-GitHub**:
+https://github.com/YuvGev00/ihelp/tree/main/docs
 
 ## הרצה מקומית
 
