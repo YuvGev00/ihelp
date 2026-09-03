@@ -1,10 +1,5 @@
 # iHelp — Architecture
 
-**Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 2 of 11 (Architecture, assignment stage 3)
-**Depends on:** `01-product-spec.md` (all product rules referenced here are defined there)
-**Status:** Final
-
 ---
 
 ## 1. Overview and Guiding Principles

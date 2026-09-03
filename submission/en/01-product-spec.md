@@ -1,10 +1,5 @@
 # iHelp — Product Specification
 
-**Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 1 of 11 (Product Specification, assignment stage 2)
-**Status:** Final
-**UI language:** Hebrew (RTL) · **Code & docs:** English
-
 ---
 
 ## 1. Executive Summary

@@ -1,9 +1,5 @@
 # iHelp — Testing Specification
 
-**Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 4 of 11 (Testing, assignment stages 6–7)
-**Depends on:** `01-product-spec.md` (rules under test), `03-technical-design.md` (mechanisms under test)
-
 ---
 
 ## 1. Testing Philosophy — what "it works" means here

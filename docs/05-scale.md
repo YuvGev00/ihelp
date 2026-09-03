@@ -1,9 +1,5 @@
 # iHelp — Basic Scale
 
-**Course:** Internet Technologies — Become a Full-Stack Engineer, RUNI CS 2026
-**Document:** 5 of 11 (Scale, assignment stage 8)
-**Grounded in:** the deployed implementation (numbers below are the real constants in the code)
-
 ---
 
 ## 1. The Scale Envelope This MVP Targets
