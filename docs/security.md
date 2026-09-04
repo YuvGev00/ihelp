@@ -107,7 +107,7 @@ Three rings, outermost to innermost (each mirrors the same bounds):
    upload (≤ 5 MB, JPEG/PNG/WebP, ≤ 5 files).
 2. **Server Action**: the authoritative `zod` parse — every field bounded,
    enums closed, Israeli phone regex, offer-price bounds, and the two
-   regression classes from review baked into tests (absent-field `null`s,
+   edge cases baked into tests (absent-field `null`s,
    coordinate coercion to (0,0)).
 3. **Database**: CHECK constraints (lengths, ranges, category set, offer-price
    bounds, phone format), enum types (invalid state = type error), unique
@@ -189,9 +189,10 @@ Honest list, ordered by how soon each should be addressed:
 | R9 | Demo seed accounts on the presentation instance | Env-supplied password, printed once | Rotate/delete demo users right after the demo |
 | R10 | Dependency drift (Next/Supabase/zod majors move fast) | Lockfile pins; CI-less repo relies on local runs | Dependabot + the test suite as the upgrade gate |
 
-One risk of this kind was found and fixed rather than listed: a direct offer
-INSERT could pre-set `final_price`, bypassing `set_final_price`'s guard chain —
-migration `0013` pins `final_price is null` at insert.
+One class of attack is closed by design rather than left on this list: the
+offer INSERT policy pins `final_price is null`, so a direct insert can never
+pre-set the agreed amount — the after-job price can only be set through the
+guarded `set_final_price` RPC after completion.
 
 None of these breaks the core guarantee of §1 — they are erosion risks at the
 edges, each with a bounded blast radius and a named, additive fix.

@@ -17,14 +17,14 @@
 |---|---|---|
 | 1 | **קישור לאפליקציה החיה (Vercel)** | https://ihelp-roan.vercel.app |
 | 2 | **קישור למאגר ה-GitHub** | https://github.com/YuvGev00/ihelp *(ציבורי)* |
-| 3 | **מסמך אפיון מוצר** | [`01-product-spec.md`](01-product-spec.md) |
-| 4 | **מסמך תכנון טכני** | [`03-technical-design.md`](03-technical-design.md) |
-| 5 | **מסמך אפיון בדיקות** | [`04-testing-spec.md`](04-testing-spec.md) |
+| 3 | **מסמך אפיון מוצר** | [`product-spec.md`](product-spec.md) |
+| 4 | **מסמך תכנון טכני** | [`technical-design.md`](technical-design.md) |
+| 5 | **מסמך אפיון בדיקות** | [`testing-spec.md`](testing-spec.md) |
 | 6 | **קוד הבדיקות** | במאגר: `tests/`, `e2e/`, `lib/*.test.ts` — 62 בדיקות Vitest + בדיקת Playwright E2E אחת (ראו פריט 5 למיפוי) |
-| 7 | **מסמך סקייל בסיסי** | [`05-scale.md`](05-scale.md) |
-| 8 | **מסמך אבטחה בסיסית** | [`06-security.md`](06-security.md) |
+| 7 | **מסמך סקייל בסיסי** | [`scale.md`](scale.md) |
+| 8 | **מסמך אבטחה בסיסית** | [`security.md`](security.md) |
 | 9 | **הוראות הרצה מקומית** | [`README.md`](README.md) (סעיף "Running locally") |
-| 10 | **מסמך "בדיקה קלה"** (חובת ההצגה בוטלה על ידי המרצה) | [`12-easy-review.md`](12-easy-review.md) — מה נבנה + מסלול בדיקה של 5 דקות. טקסט הדיבור להצגה נשאר גם ב-[`08-presentation.md`](08-presentation.md). |
+| 10 | **מסמך "בדיקה קלה"** (חובת ההצגה בוטלה על ידי המרצה) | [`easy-review.md`](easy-review.md) — מה נבנה + מסלול בדיקה של 5 דקות. טקסט הדיבור להצגה נשאר גם ב-[`presentation.md`](presentation.md). |
 
 ---
 
@@ -51,11 +51,11 @@
 
 | מסמך | תוכן |
 |---|---|
-| `docs/02-architecture.md` | ארכיטקטורה — רכיבים, בחירות טכנולוגיה, זרימות מידע, שכבות אכיפה |
-| `docs/07-internal-architecture.md` | מדריך פנימי — סיור במאגר, הזרימה המרכזית, מדד ההחלטות |
-| `docs/09-project-walkthrough.md` | מדריך לעקוב-אחרי — התקנה, בדיקות "האם זה עובד", הזרימה המרכזית |
-| `docs/10-file-reference.md` | תפקיד ומימוש של כל קובץ מקור |
-| `docs/11-course-concepts-map.md` | כל נושא שנלמד → איך מומש, למה, ואיפה בקוד |
+| `docs/architecture.md` | ארכיטקטורה — רכיבים, בחירות טכנולוגיה, זרימות מידע, שכבות אכיפה |
+| `docs/internal-architecture.md` | מדריך פנימי — סיור במאגר, הזרימה המרכזית, מדד ההחלטות |
+| `docs/project-walkthrough.md` | מדריך לעקוב-אחרי — התקנה, בדיקות "האם זה עובד", הזרימה המרכזית |
+| `docs/file-reference.md` | תפקיד ומימוש של כל קובץ מקור |
+| `docs/course-concepts-map.md` | כל נושא שנלמד → איך מומש, למה, ואיפה בקוד |
 
 ---
 

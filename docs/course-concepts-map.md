@@ -12,9 +12,9 @@ SQL / security?"*, jump to that row. Everything here is cross-checked against th
 actual code, not just the design docs.
 
 - **Live app:** https://ihelp-roan.vercel.app · **Repo:** https://github.com/YuvGev00/ihelp
-- **Companion docs:** `02-architecture.md` (mechanism), `03-technical-design.md`
-  (full SQL), `06-security.md` (risk register), `07-internal-architecture.md`
-  (decision index), `10-file-reference.md` (every file).
+- **Companion docs:** `architecture.md` (mechanism), `technical-design.md`
+  (full SQL), `security.md` (risk register), `internal-architecture.md`
+  (decision index), `file-reference.md` (every file).
 
 > **One-line thesis to repeat:** *the database is the only authority.* Every
 > permission is enforced in Postgres (RLS + `SECURITY DEFINER` functions +
@@ -127,7 +127,7 @@ hashing/session logic is the classic security mistake.
 nothing beyond what any signed-up user already has. (See §4, §9.)
 
 **Honest limitation (own it):** email confirmation is **off** for the demo (so
-seeded accounts work instantly) — risk **R1** in `06-security.md`. Identity
+seeded accounts work instantly) — risk **R1** in `security.md`. Identity
 trust comes from the *admin verification* step, not from email. SMS OTP is the
 named roadmap item.
 
@@ -195,7 +195,7 @@ offers, editing others' rows, anon lockout) and assert **denial**.
   active offer per helper per request).
 - **Indexes** (`0003_indexes.sql`) — one per hot query path (feed browse, a
   helper's offers, the admin queue), including partial indexes. Each maps to a
-  page in `05-scale.md §3`.
+  page in `scale.md §3`.
 - **Triggers** (`0005_triggers.sql`) keep invariants: `handle_new_user` creates
   the profile rows on signup; `sync_request_offer_status` flips `open ↔ has_offers`.
 - **The state machine**: `open → has_offers → assigned → completed → rated`

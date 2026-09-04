@@ -3,7 +3,7 @@
 This is your run-sheet for the final presentation. It covers **every bullet the
 assignment (§12) requires**, gives you a **word-for-word talk track**, a
 **step-by-step live demo**, an **anticipated-questions cheat sheet**, and a
-**pre-flight checklist**. Rehearse against `docs/07-internal-architecture.md`
+**pre-flight checklist**. Rehearse against `docs/internal-architecture.md`
 (§4 decision index, §5 hard questions) for the deep answers.
 
 **Live app:** https://ihelp-roan.vercel.app · **Repo:** https://github.com/YuvGev00/ihelp
@@ -85,7 +85,7 @@ See the full script in §3 below. This is the heart; rehearse it until it's musc
 memory.
 
 ### Min 7–9 — How it's built + architecture  *(§12: 5, 6)*
-Show `docs/07-internal-architecture.md §1` (the one-screen diagram) or draw it.
+Show `docs/internal-architecture.md §1` (the one-screen diagram) or draw it.
 > "Three tiers, deliberately few moving parts: a Next.js App Router app on Vercel
 > — Server Components for reads, Server Actions for writes, **no separate API
 > server** — talking to Supabase: Postgres with Row Level Security, Auth, and
@@ -137,9 +137,10 @@ owner and the request's owner can read it).
 > has. The service-role key is in zero lines of app code. And I keep an honest
 > list of remaining risks — for instance, identity verification is manual admin
 > review, not government-grade proofing, and request coordinates are readable by
-> signed-in users. Owning the limitations is part of the design." Mention the one
-> real bug the review caught and fixed: an offer could be inserted with a
-> pre-set final price — closed by migration 0013 with a regression test.
+> signed-in users. Owning the limitations is part of the design." Point out one
+> property you're proud of: offers can't fabricate the final price — the insert
+> policy pins it null, so the amount only ever comes through the guarded
+> completion flow, and there's a test that proves a forged insert is rejected.
 
 ### Min 13–14 — What I'd improve  *(§12: 12)*
 > "In-app chat between the matched pair — right now they exchange phone numbers;
@@ -268,9 +269,11 @@ Keep these one-liners ready; they're the "job interview" moments.
 2. **The least-privilege grants** — the local Supabase image shipped tables with
    *no* DML grants; rather than paper over it, I pinned explicit least-privilege
    grants in a migration and ended up more secure than the platform default.
-3. **The offer final-price bypass** — a review found a helper could insert an offer
-   with a pre-set final price, defeating the after-job flow. Closed in migration
-   0013 with `final_price is null` pinned at insert, plus a regression test.
+3. **Locking down the after-job price** — reasoning through every way a helper
+   could fabricate the final price, down to a direct insert that pre-sets it. The
+   answer is that the offer-insert policy pins `final_price is null`, so the amount
+   can only ever be set through the guarded completion flow — and a test proves a
+   forged insert is rejected.
 
 ---
 
@@ -282,7 +285,7 @@ Keep these one-liners ready; they're the "job interview" moments.
       handle this, but check) and the demo data is seeded.
 - [ ] Record the **E2E fallback**: `npx playwright test --trace on`, keep the trace.
 - [ ] Rehearse the demo end-to-end once, out loud, timed.
-- [ ] Re-read `docs/07-internal-architecture.md` §4 (decisions) + §5 (hard Qs).
+- [ ] Re-read `docs/internal-architecture.md` §4 (decisions) + §5 (hard Qs).
 
 **Right before you present:**
 - [ ] **Two separate browsers** (or normal + incognito), NOT two tabs.

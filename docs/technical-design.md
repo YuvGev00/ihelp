@@ -4,18 +4,6 @@ This document is the implementation blueprint. The SQL here *is* the schema —
 Phase 4 transcribes it into migrations. Every RLS policy carries the product-spec
 rule it enforces.
 
-> **Later product changes (authoritative in the migrations):** the requester's
-> `payment_type` was removed (migration `0011`) — a request carries no
-> paid/volunteer choice; **pricing is entirely the helper's**, on the offer,
-> via `offers.pricing_mode` ∈ {fixed, volunteer, after_job} + `price` /
-> `final_price` (migrations `0009`–`0011`). Where this document still shows
-> `help_requests.payment_type` or a "charging only on paid requests" offer
-> rule, the migrations supersede it: every request accepts all three offer
-> stances. See `supabase/migrations/0009`–`0011`. Migration `0012` adds
-> `profiles.avatar_path` (optional avatar; a third, **public** `avatars`
-> bucket); migration `0013` pins `final_price is null` in the offer INSERT
-> policy — `final_price` is written only by the `set_final_price` RPC.
-
 ---
 
 ## 1. Database Schema
@@ -30,7 +18,6 @@ create type public.offer_status    as enum
 create type public.application_kind   as enum ('identity','professional');
 create type public.application_status as enum
   ('pending','approved','rejected','revoked');
-create type public.payment_type    as enum ('paid','volunteer');  -- ⚠️ SUPERSEDED: dropped in migration 0011 (see header note); pricing moved to offers.pricing_mode
 ```
 
 Enums over `text + CHECK`: the state machine values are closed sets that the
@@ -102,11 +89,6 @@ create table public.help_requests (
   category      text not null check (category in
                   ('repairs','electricity','plumbing','moving','tutoring',
                    'tech_help','errands','gardening','pets','other')),
-  -- ⚠️ SUPERSEDED (migration 0011): payment_type was REMOVED. A request carries
-  -- no paid/volunteer intent; pricing is entirely the helper's, on the offer
-  -- (offers.pricing_mode ∈ {fixed, volunteer, after_job}). Shown here only as the
-  -- pre-0009 design of record; the live schema has no payment_type column.
-  payment_type  public.payment_type not null,
   -- request location, confirmed by the requester at publish time — NOT NULL:
   -- the spec (C3, §8.3, §9.3) makes location part of every request; a request
   -- helpers cannot locate defeats the distance-sorted marketplace (G3). The
@@ -132,7 +114,7 @@ create table public.offers (
   helper_id      uuid not null references public.profiles(id) on delete cascade,
   status         public.offer_status not null default 'active',
   message        text not null check (char_length(message) between 5 and 1000),
-  -- three pricing stances (migration 0010): a helper often cannot quote before
+  -- three pricing stances: a helper often cannot quote before
   -- seeing the problem. pricing_mode:
   --   'fixed'     → price set now (price column)
   --   'volunteer' → free (both price columns null)
@@ -146,8 +128,7 @@ create table public.offers (
     (pricing_mode = 'volunteer' and price is null and final_price is null) or
     (pricing_mode = 'after_job' and price is null)
   ),
-  -- any of the three stances is allowed on any request (migration 0011 removed
-  -- the old "charging only on paid requests" cross-table rule).
+  -- any of the three stances is allowed on any request.
   -- snapshot set by trigger T4 at insert: /my/offers must render meaningfully
   -- even after the offerer loses SELECT on the parent request (spec §9.2)
   request_title  text not null default '',
@@ -290,7 +271,7 @@ offers and ratings reference the row forever).
 | Policy | SQL condition | Enforces |
 |---|---|---|
 | `offers_select` (SELECT) | `helper_id = auth.uid() or exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id = auth.uid())` | Sealed-bid visibility: owner of the offer + owner of the request, nobody else — including admins (§9.2) |
-| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and final_price is null and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | Verified users only; not on own request; any pricing stance on any request (migration 0011); only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index). **`final_price is null` pins insert** (migration 0013) — without it a crafted after_job insert fabricates the "agreed" amount `mark_paid` coalesces to, bypassing the entire `set_final_price` guard chain |
+| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and final_price is null and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | Verified users only; not on own request; any pricing stance on any request; only while the request is open/has_offers and visible (§9.2); duplicate active blocked by the partial unique index. **`status = 'active'` pins birth state** — without it a crafted insert creates an offer born `selected` (spoofing the requester's comparison view and surviving `assign_offer`'s active-only sweep) or born `closed`/`withdrawn` (evading the uniqueness index). **`final_price is null` pins insert** — without it a crafted after_job insert fabricates the "agreed" amount `mark_paid` coalesces to, bypassing the entire `set_final_price` guard chain |
 | `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn')` | Edit or withdraw while active. The CHECK's closed set is what stops a helper PATCHing their own offer to `selected` — the only two states a helper can write are the two they own (§9.2). `request_id`, `helper_id`, `pricing_mode`, `final_price`, `created_at` are column-guard-protected (below) — otherwise an UPDATE could *re-point* an active offer at a different request, bypassing every INSERT-time check (own-request, open-status, hidden), or write `final_price` directly instead of via `set_final_price` |
 
 No DELETE — withdrawn offers stay as history (and as re-offer bookkeeping).
@@ -371,15 +352,8 @@ keeps the §10 promise — denied and missing are indistinguishable.
 ```sql
 -- 3.1 Create request + photos atomically; photos optional (0–5) and, when
 -- supplied, path ownership is enforced.
--- ⚠️ SUPERSEDED SIGNATURE: the p_payment_type parameter (and its use in the
--- INSERT below) was REMOVED in migration 0011. The live RPC takes no pricing
--- argument — a request has no paid/volunteer intent; pricing lives on offers.
--- ⚠️ SUPERSEDED CONSTRAINT: migration 0015 made photos OPTIONAL (0–5) and
--- REMOVED the photos_required check shown below; the `photos_required` raise no
--- longer exists. This illustrative block is kept for context only.
 create or replace function public.create_request_with_photos(
   p_title text, p_description text, p_category text,
-  p_payment_type public.payment_type,   -- removed in 0011
   p_lat double precision, p_lng double precision,
   p_photo_paths text[]
 ) returns uuid
@@ -396,8 +370,7 @@ begin
     raise exception 'location_required';
   end if;
 
-  -- deduplicate, then bound: 0–5 distinct photos (photos optional since 0015;
-  -- the photos_required raise shown here was removed in migration 0015)
+  -- deduplicate, then bound: 0–5 distinct photos (photos optional)
   select array_agg(distinct p) into v_paths from unnest(p_photo_paths) as p;
   if array_length(v_paths, 1) > 5 then
     raise exception 'too_many_photos';
@@ -417,11 +390,10 @@ begin
     raise exception 'photo_not_uploaded';
   end if;
 
-  -- ⚠️ SUPERSEDED: payment_type column/arg dropped in migration 0011.
   insert into public.help_requests
-    (requester_id, title, description, category, payment_type, lat, lng)
+    (requester_id, title, description, category, lat, lng)
   values
-    (auth.uid(), p_title, p_description, p_category, p_payment_type, p_lat, p_lng)
+    (auth.uid(), p_title, p_description, p_category, p_lat, p_lng)
   returning id into v_id;
 
   insert into public.request_photos (request_id, storage_path, position)
@@ -651,7 +623,7 @@ begin
   update public.help_requests set is_paid = true where id = p_request_id;
 end $$;
 
--- 3.10 After-job pricing (migration 0010): the selected helper of an
+-- 3.10 After-job pricing: the selected helper of an
 -- `after_job` offer sets the final amount once the request is completed
 -- (or rated — the requester may still mark paid). Guarded: selected helper
 -- only, after_job only, once.
@@ -878,7 +850,7 @@ type ActionResult<T = void> =
 | `forbidden` | Caller lacks the right | "אין לך הרשאה לפעולה זו" |
 | `invalid_state` | State machine forbids the transition | "הפעולה אינה זמינה במצב הנוכחי" |
 | `offer_not_active` | Assign raced a withdrawal | "ההצעה כבר אינה זמינה — רעננו את העמוד" |
-| `too_many_photos` | More than 5 photos supplied (photos are optional; `photos_required` no longer raised since migration 0015) | "ניתן לצרף עד 5 תמונות" |
+| `too_many_photos` | More than 5 photos supplied (photos are optional, 0–5) | "ניתן לצרף עד 5 תמונות" |
 | `photo_not_uploaded` | A photo path has no uploaded object behind it | "העלאת התמונות נכשלה — נסו שוב" |
 | `location_required` | Request published without coordinates | "יש לאשר מיקום לבקשה" |
 | `invalid_price` | Final price out of range (`set_final_price`) | "סכום לא תקין" |
@@ -1085,12 +1057,9 @@ lib/
   leaflet-icon.ts                   # Leaflet marker-icon asset wiring
   validation/{auth,profile,verification,request,offer,rating}.ts
 supabase/
-  migrations/
-    0001_enums.sql  0002_tables.sql  0003_indexes.sql
-    0004_functions.sql  0005_triggers.sql  0006_policies.sql
-    0007_storage.sql  0008_grants.sql  0009_offer_pricing.sql
-    0010_offer_pricing_mode.sql  0011_drop_payment_type.sql
-    0012_avatars.sql  0013_pin_final_price_insert.sql
+  migrations/                         # ordered SQL: enums, tables, indexes,
+                                      # functions, triggers, RLS policies,
+                                      # storage buckets, grants
 scripts/
   seed.ts                           # demo data — see below
 proxy.ts                            # session refresh (Next 16 name for root

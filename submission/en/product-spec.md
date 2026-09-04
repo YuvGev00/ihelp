@@ -10,7 +10,7 @@ waiting for callbacks), the person **posts a help request** and verified helpers
 nearby **compete to offer their help** — for pay or as volunteers. When the help is
 done, both sides confirm completion and the requester rates the helper.
 
-The reversal shortens the path to help: demand is published once and supply comes
+The reversal creates competition on the help you need: demand is published once and supply comes
 to it, instead of demand chasing supply one phone call at a time. Trust is
 symmetric by design — every user who transacts, requester or helper, passes an
 admin-reviewed identity verification before their first transaction.

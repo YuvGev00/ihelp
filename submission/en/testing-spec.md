@@ -98,15 +98,15 @@ Constraints and triggers as the last line of defense:
 | D7 | `helper_ratings` view exposes stars/note but **no** `rater_id`/`request_id` | column absence |
 | D8 | Identity revocation clears both flags and revokes pending professional applications | flags false, applications `revoked` |
 | D9 | `fixed` offer without a price / `volunteer` offer with a price | `price_matches_mode` CHECK violation |
-| D10 | Offer inserted with a pre-set `final_price` (forging the agreed amount at insert would bypass `set_final_price` and poison `mark_paid`) | CHECK violation — insert pin, migration 0013 |
+| D10 | Offer inserted with a pre-set `final_price` (forging the agreed amount at insert would bypass `set_final_price` and poison `mark_paid`) | CHECK violation — the insert pin keeps `final_price` null until the guarded RPC sets it |
 
 ### 3.4 Invalid-input tests (unit, zod schemas)
 
 Every schema rejects what the DB would reject — same bounds, friendlier
 message: title/description/message length bounds, bad phone formats, stars
 outside 1–5, offer-price bounds, photo count (accepts 0, rejects 6 — photos are optional, max 5), **absent
-location (the (0,0) "Null Island" regression)**, absent optional fields
-arriving as `null` (the FormData regression class found in review).
+location (the (0,0) "Null Island" case)**, absent optional fields
+arriving as `null` (the FormData null-coercion case).
 
 ### 3.5 Edge cases (integration)
 

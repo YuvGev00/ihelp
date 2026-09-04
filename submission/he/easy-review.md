@@ -84,20 +84,20 @@
 
 | דרישה | היכן לראות |
 |---|---|
-| מסמך אפיון מוצר | `docs/01-product-spec.md` |
-| תכנון טכני | `docs/03-technical-design.md` |
-| אפיון בדיקות | `docs/04-testing-spec.md` |
+| מסמך אפיון מוצר | `docs/product-spec.md` |
+| תכנון טכני | `docs/technical-design.md` |
+| אפיון בדיקות | `docs/testing-spec.md` |
 | קוד בדיקות | `tests/`, `e2e/`, `lib/*.test.ts` |
-| סקייל בסיסי | `docs/05-scale.md` |
-| אבטחה בסיסית | `docs/06-security.md` |
+| סקייל בסיסי | `docs/scale.md` |
+| אבטחה בסיסית | `docs/security.md` |
 | הרצה מקומית | `README.md` (סעיף "Running locally") |
 | האתר החי | https://ihelp-roan.vercel.app |
 | מאגר GitHub | https://github.com/YuvGev00/ihelp |
 
-**מסמכים נוספים להעמקה:** `docs/02-architecture.md` (ארכיטקטורה),
-`docs/07-internal-architecture.md` (מדריך פנימי + מדד ההחלטות),
-`docs/10-file-reference.md` (כל קובץ בפרויקט),
-`docs/11-course-concepts-map.md` (כל נושא קורס → איך מומש, למה, ואיפה בקוד).
+**מסמכים נוספים להעמקה:** `docs/architecture.md` (ארכיטקטורה),
+`docs/internal-architecture.md` (מדריך פנימי + מדד ההחלטות),
+`docs/file-reference.md` (כל קובץ בפרויקט),
+`docs/course-concepts-map.md` (כל נושא קורס → איך מומש, למה, ואיפה בקוד).
 
 ---
 
@@ -109,4 +109,4 @@
    יכול לבקש ולעזור. ההרשאות מוצמדות לשורות, לא לחשבון.
 3. **קיצוצים מכוונים.** אין תשלומים אמיתיים (רק רישום מחיר + סימון "שולם"), אין
    צ'אט, אין PostGIS — כל אלה החלטות מודעות לטובת MVP קטן, נקי ומאובטח. הנימוקים
-   מתועדים ב-`docs/01-product-spec.md §10`.
+   מתועדים ב-`docs/product-spec.md §10`.

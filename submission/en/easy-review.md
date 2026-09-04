@@ -66,20 +66,20 @@ This is the product's core flow. You can go through all of it on the live site:
 
 | Requirement | Where to see it |
 |---|---|
-| Product specification document | `docs/01-product-spec.md` |
-| Technical design | `docs/03-technical-design.md` |
-| Testing specification | `docs/04-testing-spec.md` |
+| Product specification document | `docs/product-spec.md` |
+| Technical design | `docs/technical-design.md` |
+| Testing specification | `docs/testing-spec.md` |
 | Test code | `tests/`, `e2e/`, `lib/*.test.ts` |
-| Basic scale | `docs/05-scale.md` |
-| Basic security | `docs/06-security.md` |
+| Basic scale | `docs/scale.md` |
+| Basic security | `docs/security.md` |
 | Running locally | `README.md` ("Running locally" section) |
 | Live site | https://ihelp-roan.vercel.app |
 | GitHub repository | https://github.com/YuvGev00/ihelp |
 
-**Additional documents for deeper reading:** `docs/02-architecture.md` (architecture),
-`docs/07-internal-architecture.md` (internal guide + decision log),
-`docs/10-file-reference.md` (every file in the project),
-`docs/11-course-concepts-map.md` (each course topic → how it was implemented, why, and where in the code).
+**Additional documents for deeper reading:** `docs/architecture.md` (architecture),
+`docs/internal-architecture.md` (internal guide + decision log),
+`docs/file-reference.md` (every file in the project),
+`docs/course-concepts-map.md` (each course topic → how it was implemented, why, and where in the code).
 
 ---
 
@@ -87,4 +87,4 @@ This is the product's core flow. You can go through all of it on the live site:
 
 1. **The database enforces everything.** Not the code. There are 62 tests, of which 15 impersonate the wrong user and verify that the database **rejects** them. This is the core security claim.
 2. **One account, multiple roles.** There is no separate "requester account" and "helper account" — the same person can request and help. Permissions are attached to rows, not to the account.
-3. **Deliberate cuts.** There are no real payments (only recording a price + marking "paid"), no chat, no PostGIS — all of these are conscious decisions in favor of a small, clean, secure MVP. The rationale is documented in `docs/01-product-spec.md §10`.
+3. **Deliberate cuts.** There are no real payments (only recording a price + marking "paid"), no chat, no PostGIS — all of these are conscious decisions in favor of a small, clean, secure MVP. The rationale is documented in `docs/product-spec.md §10`.

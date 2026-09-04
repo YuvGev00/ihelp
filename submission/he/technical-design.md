@@ -4,18 +4,6 @@
 שלב 4 מתמלל אותה למיגרציות. כל מדיניות RLS נושאת עמה את חוק מפרט-המוצר
 שהיא אוכפת.
 
-> **שינויי מוצר מאוחרים (הסמכות היא במיגרציות):** ה-
-> `payment_type` של מגיש הבקשה הוסר (מיגרציה `0011`) — בקשה אינה נושאת
-> בחירה של בתשלום/התנדבות; **התמחור כולו של העוזר**, על ההצעה,
-> באמצעות `offers.pricing_mode` ∈ {fixed, volunteer, after_job} + `price` /
-> `final_price` (מיגרציות `0009`–`0011`). במקומות שבהם מסמך זה עדיין מציג
-> `help_requests.payment_type` או חוק הצעה של "חיוב רק על בקשות בתשלום",
-> המיגרציות גוברות עליו: כל בקשה מקבלת את כל שלוש עמדות ההצעה.
-> ראו `supabase/migrations/0009`–`0011`. מיגרציה `0012` מוסיפה
-> `profiles.avatar_path` (אווטאר אופציונלי; באקט **ציבורי** שלישי בשם `avatars`);
-> מיגרציה `0013` מקבעת `final_price is null` במדיניות ה-INSERT של ההצעה —
-> `final_price` נכתב רק על ידי ה-RPC `set_final_price`.
-
 ---
 
 ## 1. סכימת בסיס הנתונים
@@ -30,7 +18,6 @@ create type public.offer_status    as enum
 create type public.application_kind   as enum ('identity','professional');
 create type public.application_status as enum
   ('pending','approved','rejected','revoked');
-create type public.payment_type    as enum ('paid','volunteer');  -- ⚠️ הוחלף (SUPERSEDED): הוסר במיגרציה 0011 (ראו הערת ה-header); התמחור עבר ל-offers.pricing_mode
 ```
 
 Enums במקום `text + CHECK`: ערכי מכונת-המצבים הם קבוצות סגורות שכל
@@ -102,11 +89,6 @@ create table public.help_requests (
   category      text not null check (category in
                   ('repairs','electricity','plumbing','moving','tutoring',
                    'tech_help','errands','gardening','pets','other')),
-  -- ⚠️ הוחלף (SUPERSEDED) (מיגרציה 0011): payment_type הוסר. בקשה אינה נושאת
-  -- כוונה של בתשלום/התנדבות; התמחור כולו של העוזר, על ההצעה
-  -- (offers.pricing_mode ∈ {fixed, volunteer, after_job}). מוצג כאן רק כתיעוד
-  -- העיצוב לפני-0009; לסכימה החיה אין עמודת payment_type.
-  payment_type  public.payment_type not null,
   -- request location, confirmed by the requester at publish time — NOT NULL:
   -- the spec (C3, §8.3, §9.3) makes location part of every request; a request
   -- helpers cannot locate defeats the distance-sorted marketplace (G3). The
@@ -132,7 +114,7 @@ create table public.offers (
   helper_id      uuid not null references public.profiles(id) on delete cascade,
   status         public.offer_status not null default 'active',
   message        text not null check (char_length(message) between 5 and 1000),
-  -- three pricing stances (migration 0010): a helper often cannot quote before
+  -- three pricing stances: a helper often cannot quote before
   -- seeing the problem. pricing_mode:
   --   'fixed'     → price set now (price column)
   --   'volunteer' → free (both price columns null)
@@ -146,8 +128,7 @@ create table public.offers (
     (pricing_mode = 'volunteer' and price is null and final_price is null) or
     (pricing_mode = 'after_job' and price is null)
   ),
-  -- any of the three stances is allowed on any request (migration 0011 removed
-  -- the old "charging only on paid requests" cross-table rule).
+  -- any of the three stances is allowed on any request.
   -- snapshot set by trigger T4 at insert: /my/offers must render meaningfully
   -- even after the offerer loses SELECT on the parent request (spec §9.2)
   request_title  text not null default '',
@@ -290,7 +271,7 @@ $$;
 | מדיניות | תנאי SQL | אוכפת |
 |---|---|---|
 | `offers_select` (SELECT) | `helper_id = auth.uid() or exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id = auth.uid())` | נראוּת של מכרז-אטום: בעל ההצעה + בעל הבקשה, אף אחד אחר — כולל מנהלים (§9.2) |
-| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and final_price is null and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | משתמשים מאומתים בלבד; לא על בקשה עצמית; כל עמדת תמחור על כל בקשה (מיגרציה 0011); רק כל עוד הבקשה פתוחה/has_offers וגלויה (§9.2); active כפול נחסם על ידי ה-partial unique index. **`status = 'active'` מקבע מצב-לידה** — בלעדיו insert מזויף יוצר הצעה שנולדת `selected` (מזייף את תצוגת-ההשוואה של המבקש ושורד את הסריקה active-בלבד של `assign_offer`) או שנולדת `closed`/`withdrawn` (מתחמק מאינדקס הייחודיות). **`final_price is null` מקבע את ה-insert** (מיגרציה 0013) — בלעדיו insert מזויף מסוג after_job מפברק את הסכום "המוסכם" ש-`mark_paid` מבצע עליו coalesce, ועוקף את כל שרשרת השומרים של `set_final_price` |
+| `offers_insert` (INSERT) | `helper_id = auth.uid() and status = 'active' and final_price is null and public.is_identity_verified() and exists (select 1 from public.help_requests r where r.id = request_id and r.requester_id <> auth.uid() and r.status in ('open','has_offers') and not r.is_hidden)` | משתמשים מאומתים בלבד; לא על בקשה עצמית; כל עמדת תמחור על כל בקשה; רק כל עוד הבקשה פתוחה/has_offers וגלויה (§9.2); active כפול נחסם על ידי ה-partial unique index. **`status = 'active'` מקבע מצב-לידה** — בלעדיו insert מזויף יוצר הצעה שנולדת `selected` (מזייף את תצוגת-ההשוואה של המבקש ושורד את הסריקה active-בלבד של `assign_offer`) או שנולדת `closed`/`withdrawn` (מתחמק מאינדקס הייחודיות). **`final_price is null` מקבע את ה-insert** — בלעדיו insert מזויף מסוג after_job מפברק את הסכום "המוסכם" ש-`mark_paid` מבצע עליו coalesce, ועוקף את כל שרשרת השומרים של `set_final_price` |
 | `offers_update_own` (UPDATE) | USING `helper_id = auth.uid() and status = 'active'` CHECK `helper_id = auth.uid() and status in ('active','withdrawn')` | עריכה או משיכה כל עוד active. הקבוצה הסגורה של ה-CHECK היא מה שעוצר עוזר מלבצע PATCH על ההצעה שלו ל-`selected` — שני המצבים היחידים שעוזר יכול לכתוב הם השניים שבבעלותו (§9.2). `request_id`, `helper_id`, `pricing_mode`, `final_price`, `created_at` מוגנים על ידי שומר-העמודות (להלן) — אחרת UPDATE היה יכול *להצביע-מחדש* על הצעה active לבקשה אחרת, ולעקוף כל בדיקת INSERT (בקשה-עצמית, מצב-פתוח, מוסתר), או לכתוב `final_price` ישירות במקום דרך `set_final_price` |
 
 אין DELETE — הצעות שנמשכו נשארות כהיסטוריה (וכרישום-הצעה-מחדש).
@@ -371,15 +352,8 @@ create policy "docs_read" on storage.objects for select to authenticated
 ```sql
 -- 3.1 Create request + photos atomically; photos optional (0–5) and, when
 -- supplied, path ownership is enforced.
--- ⚠️ הוחלף (SUPERSEDED) — חתימה: הפרמטר p_payment_type (והשימוש בו ב-
--- INSERT להלן) הוסר במיגרציה 0011. ה-RPC החי אינו מקבל ארגומנט תמחור
--- כלשהו — לבקשה אין כוונת בתשלום/התנדבות; התמחור חי על ההצעות.
--- ⚠️ הוחלף (SUPERSEDED) — אילוץ: מיגרציה 0015 הפכה את התצלומים לאופציונליים
--- (0–5) והסירה את בדיקת photos_required המוצגת להלן; ה-raise של
--- photos_required כבר אינו קיים. בלוק זה נשמר להמחשה בלבד.
 create or replace function public.create_request_with_photos(
   p_title text, p_description text, p_category text,
-  p_payment_type public.payment_type,   -- removed in 0011
   p_lat double precision, p_lng double precision,
   p_photo_paths text[]
 ) returns uuid
@@ -396,8 +370,7 @@ begin
     raise exception 'location_required';
   end if;
 
-  -- deduplicate, then bound: 0–5 distinct photos (photos optional since 0015;
-  -- the photos_required raise shown here was removed in migration 0015)
+  -- deduplicate, then bound: 0–5 distinct photos (photos are optional)
   select array_agg(distinct p) into v_paths from unnest(p_photo_paths) as p;
   if array_length(v_paths, 1) > 5 then
     raise exception 'too_many_photos';
@@ -417,11 +390,10 @@ begin
     raise exception 'photo_not_uploaded';
   end if;
 
-  -- ⚠️ הוחלף (SUPERSEDED): עמודת/ארגומנט payment_type הוסרו במיגרציה 0011.
   insert into public.help_requests
-    (requester_id, title, description, category, payment_type, lat, lng)
+    (requester_id, title, description, category, lat, lng)
   values
-    (auth.uid(), p_title, p_description, p_category, p_payment_type, p_lat, p_lng)
+    (auth.uid(), p_title, p_description, p_category, p_lat, p_lng)
   returning id into v_id;
 
   insert into public.request_photos (request_id, storage_path, position)
@@ -651,7 +623,7 @@ begin
   update public.help_requests set is_paid = true where id = p_request_id;
 end $$;
 
--- 3.10 After-job pricing (migration 0010): the selected helper of an
+-- 3.10 After-job pricing: the selected helper of an
 -- `after_job` offer sets the final amount once the request is completed
 -- (or rated — the requester may still mark paid). Guarded: selected helper
 -- only, after_job only, once.
@@ -878,7 +850,7 @@ type ActionResult<T = void> =
 | `forbidden` | לקורא אין את ההרשאה | "אין לך הרשאה לפעולה זו" |
 | `invalid_state` | מכונת-המצבים אוסרת את המעבר | "הפעולה אינה זמינה במצב הנוכחי" |
 | `offer_not_active` | Assign התנגש עם משיכה | "ההצעה כבר אינה זמינה — רעננו את העמוד" |
-| `too_many_photos` | סופקו יותר מ-5 תמונות (התצלומים אופציונליים; `photos_required` כבר אינו מופעל החל ממיגרציה 0015) | "ניתן לצרף עד 5 תמונות" |
+| `too_many_photos` | סופקו יותר מ-5 תמונות (התצלומים אופציונליים, 0–5) | "ניתן לצרף עד 5 תמונות" |
 | `photo_not_uploaded` | לנתיב תמונה אין אובייקט שהועלה מאחוריו | "העלאת התמונות נכשלה — נסו שוב" |
 | `location_required` | בקשה פורסמה ללא קואורדינטות | "יש לאשר מיקום לבקשה" |
 | `invalid_price` | מחיר סופי מחוץ לטווח (`set_final_price`) | "סכום לא תקין" |
@@ -1084,12 +1056,7 @@ lib/
   leaflet-icon.ts                   # Leaflet marker-icon asset wiring
   validation/{auth,profile,verification,request,offer,rating}.ts
 supabase/
-  migrations/
-    0001_enums.sql  0002_tables.sql  0003_indexes.sql
-    0004_functions.sql  0005_triggers.sql  0006_policies.sql
-    0007_storage.sql  0008_grants.sql  0009_offer_pricing.sql
-    0010_offer_pricing_mode.sql  0011_drop_payment_type.sql
-    0012_avatars.sql  0013_pin_final_price_insert.sql
+  migrations/    # SQL מסודר: enums, טבלאות, אינדקסים, פונקציות, טריגרים, מדיניות RLS, דליי אחסון, הרשאות
 scripts/
   seed.ts                           # demo data — see below
 proxy.ts                            # session refresh (Next 16 name for root

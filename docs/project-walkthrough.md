@@ -12,9 +12,9 @@ demoing, or just re-familiarizing yourself before the presentation.
   completion; the requester rates the helper.
 
 > **Companion docs:** for *what to say* in the presentation see
-> `08-presentation.md`; for a file-by-file explanation see
-> `10-file-reference.md`; for the deep "why" behind decisions see
-> `07-internal-architecture.md`.
+> `presentation.md`; for a file-by-file explanation see
+> `file-reference.md`; for the deep "why" behind decisions see
+> `internal-architecture.md`.
 
 ---
 
@@ -204,7 +204,7 @@ business logic, by design.
 
 ## Part E — Presenting (the short version)
 
-The full run-sheet is `08-presentation.md`. The essentials:
+The full run-sheet is `presentation.md`. The essentials:
 
 - **Resume Supabase first** (Part A) and confirm `/api/health` is green.
 - **Two separate browsers**, logged in as Dana (requester) and Yossi (helper),
@@ -231,4 +231,4 @@ The full run-sheet is `08-presentation.md`. The essentials:
 | `docs/` | All the written documents (spec, architecture, technical design, tests, scale, security, this walkthrough, and the file reference). |
 
 For a file-by-file explanation of purpose + how each was implemented, see
-**`10-file-reference.md`**.
+**`file-reference.md`**.

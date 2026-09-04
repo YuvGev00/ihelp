@@ -13,20 +13,20 @@ helpers are rated after completion.
 
 ## Documentation
 
-> **New here? Start with [`00-SUBMISSION-INDEX.md`](00-SUBMISSION-INDEX.md)** — it maps
+> **New here? Start with [`SUBMISSION-INDEX.md`](SUBMISSION-INDEX.md)** — it maps
 > the 10 required submission items to their files, and lists the demo logins.
 
 This submission folder contains the required documents (in `en/` and `he/`):
 
 | Doc | Content |
 |---|---|
-| [`01-product-spec.md`](01-product-spec.md) | Product specification — problem, users, customer, goals, processes, state machine, permission matrix |
-| [`03-technical-design.md`](03-technical-design.md) | Technical design — full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
-| [`04-testing-spec.md`](04-testing-spec.md) | Testing specification — what is tested and why it proves the product works |
-| [`05-scale.md`](05-scale.md) | Scale — load analysis, indexes, pagination, limits and successors |
-| [`06-security.md`](06-security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
-| [`08-presentation.md`](08-presentation.md) | Presentation run-sheet — talk track + demo script |
-| [`12-easy-review.md`](12-easy-review.md) | Easy-review guide — what was built + a 5-minute review path |
+| [`product-spec.md`](product-spec.md) | Product specification — problem, users, customer, goals, processes, state machine, permission matrix |
+| [`technical-design.md`](technical-design.md) | Technical design — full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
+| [`testing-spec.md`](testing-spec.md) | Testing specification — what is tested and why it proves the product works |
+| [`scale.md`](scale.md) | Scale — load analysis, indexes, pagination, limits and successors |
+| [`security.md`](security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
+| [`presentation.md`](presentation.md) | Presentation run-sheet — talk track + demo script |
+| [`easy-review.md`](easy-review.md) | Easy-review guide — what was built + a 5-minute review path |
 
 Additional deep-dive docs (architecture, internal guide, walkthrough, file
 reference, course-concepts map) live in the **`docs/` folder of the GitHub
@@ -60,7 +60,7 @@ Other commands: `npm test` (unit tests), `npm run lint`, `npm run build`.
 ## Environment variables
 
 The deployed app needs **exactly two**, both safe to expose because Row Level
-Security is the authority (see `docs/02-architecture.md` §9):
+Security is the authority (see `docs/architecture.md` §9):
 
 | Variable | Purpose |
 |---|---|
@@ -76,4 +76,4 @@ Every permission is enforced in the database: RLS policies for row access,
 unique/check constraints for cross-row rules, and a small audited set of
 SECURITY DEFINER functions (eleven RPCs) for atomic state transitions — the UI and
 server actions only mirror these rules for usability. A crafted API request
-carrying a user's JWT hits exactly the same wall. Details: `docs/03-technical-design.md` §2–§3.
+carrying a user's JWT hits exactly the same wall. Details: `docs/technical-design.md` §2–§3.

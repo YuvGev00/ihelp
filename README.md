@@ -14,7 +14,7 @@ Final project · *Internet Technologies — Become a Full-Stack Engineer* · RUN
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)
 ![Tests](https://img.shields.io/badge/tests-63%20passing-0f6b4f?style=flat-square)
 
-**[🌐 Live app](https://ihelp-roan.vercel.app)** · **[📄 Easy-review guide](docs/12-easy-review.md)** · **[📚 All docs](#-documentation)**
+**[🌐 Live app](https://ihelp-roan.vercel.app)** · **[📄 Easy-review guide](docs/easy-review.md)** · **[📚 All docs](#-documentation)**
 
 </div>
 
@@ -62,30 +62,30 @@ The live site has six seeded demo accounts — all with the password **`12345678
 
 ## 📚 Documentation
 
-> **Reviewing this project?** Start with **[docs/12-easy-review.md](docs/12-easy-review.md)** —
+> **Reviewing this project?** Start with **[docs/easy-review.md](docs/easy-review.md)** —
 > what was built and a 5-minute review path on the live site (Hebrew).
 
 **Required submission documents**
 
 | Doc | Content |
 |---|---|
-| [01 · Product spec](docs/01-product-spec.md) | Problem, users, customer, goals, processes, state machine, permission matrix |
-| [03 · Technical design](docs/03-technical-design.md) | Full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
-| [04 · Testing spec](docs/04-testing-spec.md) | What is tested and why it proves the product works |
-| [05 · Scale](docs/05-scale.md) | Load analysis, indexes, pagination, limits and their successors |
-| [06 · Security](docs/06-security.md) | Auth/authz layers, secrets, env vars, remaining risks |
+| [Product spec](docs/product-spec.md) | Problem, users, customer, goals, processes, state machine, permission matrix |
+| [Technical design](docs/technical-design.md) | Full SQL schema, every RLS policy, RPC bodies, CRUD, validation, error handling, UX |
+| [Testing spec](docs/testing-spec.md) | What is tested and why it proves the product works |
+| [Scale](docs/scale.md) | Load analysis, indexes, pagination, limits and their successors |
+| [Security](docs/security.md) | Auth/authz layers, secrets, env vars, remaining risks |
 
 **Deeper reference**
 
 | Doc | Content |
 |---|---|
-| [02 · Architecture](docs/02-architecture.md) | Components, technology choices, data flows, enforcement layers |
-| [07 · Internal guide](docs/07-internal-architecture.md) | Repo tour, core flow, the decision index |
-| [08 · Presentation](docs/08-presentation.md) | Talk track + demo script |
-| [09 · Walkthrough](docs/09-project-walkthrough.md) | Follow-along setup, "is it up?" checks, core flow |
-| [10 · File reference](docs/10-file-reference.md) | Every source file's purpose & implementation |
-| [11 · Course-concepts map](docs/11-course-concepts-map.md) | Every taught concept → how it was built, why, and where in the code |
-| [12 · Easy-review guide](docs/12-easy-review.md) | What was built + a 5-minute review path (the reviewer's entry point) |
+| [Architecture](docs/architecture.md) | Components, technology choices, data flows, enforcement layers |
+| [Internal guide](docs/internal-architecture.md) | Repo tour, core flow, the decision index |
+| [Presentation](docs/presentation.md) | Talk track + demo script |
+| [Walkthrough](docs/project-walkthrough.md) | Follow-along setup, "is it up?" checks, core flow |
+| [File reference](docs/file-reference.md) | Every source file's purpose & implementation |
+| [Course-concepts map](docs/course-concepts-map.md) | Every taught concept → how it was built, why, and where in the code |
+| [Easy-review guide](docs/easy-review.md) | What was built + a 5-minute review path (the reviewer's entry point) |
 
 ---
 
@@ -134,7 +134,7 @@ npm run dev        # → http://localhost:3000
 ## 🔐 Environment variables
 
 The deployed app needs **exactly two** — both safe to expose, because Row Level
-Security is the authority (see [architecture §9](docs/02-architecture.md)):
+Security is the authority (see [architecture §9](docs/architecture.md)):
 
 | Variable | Purpose |
 |---|---|
@@ -153,4 +153,4 @@ unique/check constraints for cross-row rules, and a small audited set of
 `SECURITY DEFINER` functions (eleven RPCs) for atomic state transitions. The UI
 and Server Actions only mirror these rules for a friendly error — a crafted API
 request carrying a user's JWT hits exactly the same wall. Full detail:
-[technical design §2–§3](docs/03-technical-design.md).
+[technical design §2–§3](docs/technical-design.md).

@@ -40,9 +40,9 @@ directly to prove it."**
 | `supabase/migrations/0005_triggers.sql` | Signup, offer-status sync, **column guard**, offer-insert prep | "RLS can't do that" questions |
 | `supabase/migrations/0006_policies.sql` | Every RLS policy + the `helper_ratings` view | Authorization |
 | `supabase/migrations/0008_grants.sql` | Explicit least-privilege verb grants | The platform-defaults war story |
-| `supabase/migrations/0009–0011` | Pricing redesign: price moves to the offer — `pricing_mode` {fixed/volunteer/after_job} + `price`/`final_price`, `set_final_price` RPC, `help_requests.payment_type` dropped | "Who sets the price" |
+| `supabase/migrations/0009–0011` | Pricing lives on the offer: `pricing_mode` {fixed/volunteer/after_job} + `price`/`final_price`, `set_final_price` RPC; the request itself carries no payment type | "Who sets the price" |
 | `supabase/migrations/0012_avatars.sql` | `profiles.avatar_path` + the third bucket: `avatars`, **public** | Profile pictures, public vs private buckets |
-| `supabase/migrations/0013_pin_final_price_insert.sql` | Security fix: pins `final_price is null` at offer insert (closes the set_final_price bypass) | "Did you find any holes yourselves" |
+| `supabase/migrations/0013_pin_final_price_insert.sql` | The offer-insert policy pins `final_price is null`, so pricing only ever flows through the guarded `set_final_price` RPC | "Who sets the price / can it be forged" |
 | `proxy.ts`, `lib/supabase/middleware.ts` | Session refresh, signed-out/signed-in redirects, `/emergency` exclusion | Auth plumbing, static emergency page |
 | `app/(app)/layout.tsx` → `(onboarded)/layout.tsx` | Session shell → onboarding gate | Route-group trick (no redirect loop) |
 | `app/(app)/(onboarded)/requests/page.tsx` | Feed: capped fetch → Haversine sort → paginate → bulk-sign photos | Scale, geo |
@@ -94,13 +94,13 @@ directly to prove it."**
 - *Reversed marketplace?* Demand posts once; supply competes — shortens time-to-help (spec §3).
 - *Both sides verified?* A fake request lures a helper as easily as a fake helper harms a requester — symmetric physical risk ⇒ symmetric gate (spec §4.1).
 - *No payments?* External dependency + compliance for zero mechanic-validation value; the agreed amount (`coalesce(price, final_price)` of the selected offer) is data, "paid" is a marker (spec §3).
-- *Helpers dictate the price?* Deepens the reversed-marketplace mechanic — supply competes on price, not just trust/speed; the request carries no payment type at all (dropped in 0011): every offer declares `fixed` / `volunteer` / `after_job`, on any request.
+- *Helpers dictate the price?* Deepens the reversed-marketplace mechanic — supply competes on price, not just trust/speed; the request carries no payment type at all — every offer declares `fixed` / `volunteer` / `after_job`, on any request.
 - *No chat?* Phone reveal after mutual commitment covers coordination; chat is the first post-MVP item (spec §3).
 - *Emergency page static?* Anything that looks like dispatch creates a life-safety expectation we cannot meet — `force-static` + middleware exclusion make it *provably* inert (spec §11).
 
 **Architecture**
 - *Server Actions, no REST?* Less surface to secure; nothing external calls us (arch §7).
-- *profiles split in two?* RLS is row-level; helper cards need broad reads, so phone/coords/admin-flag live in an own-row-only table (arch §4.1 — was the review's critical catch).
+- *profiles split in two?* RLS is row-level; helper cards need broad reads, so phone/coords/admin-flag live in an own-row-only table (arch §4.1).
 - *11 RPCs?* Every rule RLS cannot express: cross-owner writes, old-vs-new column rules, multi-table atomicity, column slicing (arch §4.2).
 - *Maps without an API key?* Leaflet in the browser; the one third-party runtime dependency is OpenStreetMap raster tiles — display-only, keyless, free; a tile-server outage degrades to a blank map square, never breaks a flow.
 - *Avatars in a public bucket?* Avatars render in `<img>` across the app and are non-sensitive public-identity data like display_name — a public bucket avoids per-render signed URLs; writes stay own-folder-only (0012).

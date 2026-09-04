@@ -6,7 +6,7 @@
 |---|---|
 | 🌐 **Live app (Vercel)** | https://ihelp-roan.vercel.app |
 | 💻 **GitHub repository** | https://github.com/YuvGev00/ihelp |
-| 📄 **Easy-review guide** | [`docs/12-easy-review.md`](docs/12-easy-review.md) — what was built + a 5-minute review path |
+| 📄 **Easy-review guide** | [`docs/easy-review.md`](docs/easy-review.md) — what was built + a 5-minute review path |
 
 ## Demo logins (live site)
 

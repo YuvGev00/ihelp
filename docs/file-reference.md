@@ -28,7 +28,7 @@ the app trusts the database, so these files *are* the security and business logi
 | `0010_offer_pricing_mode.sql` | Three pricing stances | Adds `offers.pricing_mode` (fixed/volunteer/after_job) + `final_price` + the `set_final_price` RPC + the `price_matches_mode` check. |
 | `0011_drop_payment_type.sql` | Simplify | Drops the now-redundant requester `payment_type`; the offer carries pricing entirely. |
 | `0012_avatars.sql` | Profile pictures | Adds `profiles.avatar_path` + a **public** `avatars` bucket (safe: non-sensitive, avoids per-render signed URLs). |
-| `0013_pin_final_price_insert.sql` | **Security fix** | A review found a helper could INSERT an offer with a pre-set `final_price`, bypassing the after-job flow. Pins `final_price is null` at insert; rebuilds the check as defense-in-depth. Regression-tested. |
+| `0013_pin_final_price_insert.sql` | Pin the after-job price | Pins `final_price is null` at offer insert, so the after-job amount can only be set through the guarded `set_final_price` RPC — never fabricated at insert. |
 | `0014_helper_stats.sql` | Richer reputation | Extends `helper_ratings` with request category (still no rater linkage) + adds the `get_helper_stats` RPC (jobs count, category breakdown, star histogram) — aggregates only, so no raw row leaks. |
 
 ---
@@ -156,13 +156,13 @@ input with zod → call the DB (RPC or table write) → the DB is the real gate 
 
 | File | What it is |
 |---|---|
-| `01-product-spec.md` | Product spec — problem, users, customer, goals, processes, permission matrix. |
-| `02-architecture.md` | Architecture — components, data flow, the privileged-code inventory, enforcement layers. |
-| `03-technical-design.md` | The full SQL blueprint — schema, every RLS policy, every RPC body, validation, UX. |
-| `04-testing-spec.md` | What is tested and why it proves the product works. |
-| `05-scale.md` | Load analysis, indexes, pagination, limits and their named successors. |
-| `06-security.md` | Auth/authz layers, secrets, env vars, remaining risks. |
-| `07-internal-architecture.md` | Internal guide — repo tour, flows, and the *decision index* (the "why" behind each choice). |
-| `08-presentation.md` | The presentation run-sheet (talk track + demo script). |
-| `09-project-walkthrough.md` | The follow-along guide (setup, run, understand, present). |
-| `10-file-reference.md` | **This file** — every file's purpose and implementation. |
+| `product-spec.md` | Product spec — problem, users, customer, goals, processes, permission matrix. |
+| `architecture.md` | Architecture — components, data flow, the privileged-code inventory, enforcement layers. |
+| `technical-design.md` | The full SQL blueprint — schema, every RLS policy, every RPC body, validation, UX. |
+| `testing-spec.md` | What is tested and why it proves the product works. |
+| `scale.md` | Load analysis, indexes, pagination, limits and their named successors. |
+| `security.md` | Auth/authz layers, secrets, env vars, remaining risks. |
+| `internal-architecture.md` | Internal guide — repo tour, flows, and the *decision index* (the "why" behind each choice). |
+| `presentation.md` | The presentation run-sheet (talk track + demo script). |
+| `project-walkthrough.md` | The follow-along guide (setup, run, understand, present). |
+| `file-reference.md` | **This file** — every file's purpose and implementation. |
