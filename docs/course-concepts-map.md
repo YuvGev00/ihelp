@@ -155,8 +155,7 @@ named roadmap item.
 - **The `profiles` / `profiles_private` split** — the flagship decision.
   Postgres RLS is *row-level, not column-level*: you can't hide *columns* from a
   readable row. So private fields (phone, lat/lng, `is_admin`) live in a
-  **separate table** whose only read path is your own row. (This was the review's
-  critical catch.)
+  **separate table** whose only read path is your own row.
 - **11 `SECURITY DEFINER` RPCs** (`0004_functions.sql` + later migrations) for
   every rule RLS can't express — e.g. `assign_offer` (atomically pick one offer,
   close the rest, in one transaction), `confirm_completion` (both sides), the

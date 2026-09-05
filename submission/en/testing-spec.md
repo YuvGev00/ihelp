@@ -91,14 +91,14 @@ Constraints and triggers as the last line of defense:
 |---|---|---|
 | D1 | Second *active* offer by same helper on same request | unique-index violation |
 | D2 | Second application of same kind while one is pending | partial-unique violation |
-| D3 | Offers carrying each pricing stance on the same request — requests no longer carry a paid/volunteer intent | all three stances (`fixed`/`volunteer`/`after_job`) accepted |
+| D3 | Offers carrying each pricing stance on the same request — pricing belongs to the offer, so a request accepts any mix | all three stances (`fixed`/`volunteer`/`after_job`) accepted |
 | D4 | Second rating for the same request | PK violation |
 | D5 | Professional application without a document | CHECK violation |
 | D6 | Signup trigger creates `profiles` + `profiles_private` rows | rows exist |
 | D7 | `helper_ratings` view exposes stars/note but **no** `rater_id`/`request_id` | column absence |
 | D8 | Identity revocation clears both flags and revokes pending professional applications | flags false, applications `revoked` |
 | D9 | `fixed` offer without a price / `volunteer` offer with a price | `price_matches_mode` CHECK violation |
-| D10 | Offer inserted with a pre-set `final_price` (forging the agreed amount at insert would bypass `set_final_price` and poison `mark_paid`) | CHECK violation — the insert pin keeps `final_price` null until the guarded RPC sets it |
+| D10 | Offer inserted with a pre-set `final_price` | CHECK violation — the insert pin keeps `final_price` null so the amount is only ever set via the guarded `set_final_price` RPC |
 
 ### 3.4 Invalid-input tests (unit, zod schemas)
 

@@ -24,7 +24,7 @@ list. Each of the 10 required items is mapped below to where it lives.
 | 7 | **Basic scale document** | [`scale.md`](scale.md) |
 | 8 | **Basic security document** | [`security.md`](security.md) |
 | 9 | **Local-run instructions** | [`README.md`](README.md) (section "Running locally") |
-| 10 | **"Easy review" document** (the presentation was waived by the instructor) | [`easy-review.md`](easy-review.md) — what was built + a 5-minute review path. The in-person talk track also remains in [`presentation.md`](presentation.md). |
+| 10 | **"Easy review" document** | [`easy-review.md`](easy-review.md) — what was built + a 5-minute review path. |
 
 ---
 

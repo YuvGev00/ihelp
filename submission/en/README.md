@@ -25,7 +25,6 @@ This submission folder contains the required documents (in `en/` and `he/`):
 | [`testing-spec.md`](testing-spec.md) | Testing specification — what is tested and why it proves the product works |
 | [`scale.md`](scale.md) | Scale — load analysis, indexes, pagination, limits and successors |
 | [`security.md`](security.md) | Security — auth/authz layers, secrets, env vars, remaining risks |
-| [`presentation.md`](presentation.md) | Presentation run-sheet — talk track + demo script |
 | [`easy-review.md`](easy-review.md) | Easy-review guide — what was built + a 5-minute review path |
 
 Additional deep-dive docs (architecture, internal guide, walkthrough, file

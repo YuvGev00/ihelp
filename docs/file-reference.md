@@ -26,7 +26,7 @@ the app trusts the database, so these files *are* the security and business logi
 | `0008_grants.sql` | Least privilege | Explicit table grants — the local Supabase image shipped tables with *no* DML grants, so this pins exactly what `anon`/`authenticated` may do, ending up stricter than the platform default. |
 | `0009_offer_pricing.sql` | Move price to the offer | Adds `offers.price`; pricing becomes the helper's, not the requester's. |
 | `0010_offer_pricing_mode.sql` | Three pricing stances | Adds `offers.pricing_mode` (fixed/volunteer/after_job) + `final_price` + the `set_final_price` RPC + the `price_matches_mode` check. |
-| `0011_drop_payment_type.sql` | Simplify | Drops the now-redundant requester `payment_type`; the offer carries pricing entirely. |
+| `0011_drop_payment_type.sql` | Pricing lives on the offer | The request carries no pricing; each offer declares its own stance (fixed / volunteer / after-job). |
 | `0012_avatars.sql` | Profile pictures | Adds `profiles.avatar_path` + a **public** `avatars` bucket (safe: non-sensitive, avoids per-render signed URLs). |
 | `0013_pin_final_price_insert.sql` | Pin the after-job price | Pins `final_price is null` at offer insert, so the after-job amount can only be set through the guarded `set_final_price` RPC — never fabricated at insert. |
 | `0014_helper_stats.sql` | Richer reputation | Extends `helper_ratings` with request category (still no rater linkage) + adds the `get_helper_stats` RPC (jobs count, category breakdown, star histogram) — aggregates only, so no raw row leaks. |

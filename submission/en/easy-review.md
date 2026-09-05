@@ -2,7 +2,7 @@
 
 **Internet Technologies — Become a Full-Stack Engineer · RUNI CS 2026**
 
-This document is intended for a reviewer who did not watch a live presentation. It briefly explains **what I built**, and provides a **~5-minute review path** to confirm that the product works — with no need to install anything.
+This document briefly explains **what I built**, and provides a **~5-minute review path** for a reviewer to confirm that the product works — with no need to install anything.
 
 - **Live site:** https://ihelp-roan.vercel.app
 - **Code repository:** https://github.com/YuvGev00/ihelp

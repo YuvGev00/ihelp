@@ -63,12 +63,11 @@ Authorization is layered, and only the last layer is trusted (architecture §9):
    - **Column-guard triggers** close what row-level policies cannot express:
      nobody PATCHes `status`, `is_paid`, verification flags, or `is_admin` —
      tested by attempting exactly that (P9, P10).
-   - **Explicit least-privilege grants** (migration `0008`): `authenticated`
+   - **Explicit least-privilege grants**: `authenticated`
      has **no INSERT** on `help_requests`/`request_photos`/`ratings` (writes
      exist only inside definer RPCs) and **no DELETE anywhere**; `anon` has no
-     table access. We discovered the platform's implicit default grants were
-     unreliable across versions, so every verb is pinned in a migration — the
-     app never relies on platform defaults for security.
+     table access. Every verb each role holds is pinned explicitly in the
+     schema — the app never relies on platform default privileges for security.
    - **Admin is data, not code**: `is_admin` lives in `profiles_private`, set
      only by direct SQL, checked by a definer helper inside policies and RPCs.
      Admin *capabilities* are exactly the three admin RPCs
@@ -166,11 +165,9 @@ Three rings, outermost to innermost (each mirrors the same bounds):
 
 No secret is committed to the repository (`.env*` is gitignored; the example
 file contains placeholders). Supabase-side secrets (JWT signing secret, DB
-password) never leave Supabase's dashboard. Full disclosure: an early commit
-hardcoded a demo-account password in the seed script; it was replaced by
-`SEED_PASSWORD` after review, but like anything ever committed it survives in
-git history — so that historical value must simply never be used as the real
-seed password (risk R9).
+password) never leave Supabase's dashboard. The demo seed password is supplied
+through the `SEED_PASSWORD` environment variable (or randomly generated and
+printed once by the seed script), never embedded in code — see risk R9.
 
 ## 9. Remaining Risks and What We Would Improve Next
 

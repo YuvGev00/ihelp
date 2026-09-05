@@ -1,8 +1,7 @@
 # iHelp — Detailed Technical Design
 
-This document is the implementation blueprint. The SQL here *is* the schema —
-Phase 4 transcribes it into migrations. Every RLS policy carries the product-spec
-rule it enforces.
+This document describes the implemented system. The SQL here *is* the schema,
+and every RLS policy carries the product-spec rule it enforces.
 
 ---
 
@@ -15,6 +14,7 @@ create type public.request_status  as enum
   ('open','has_offers','assigned','completed','rated','cancelled');
 create type public.offer_status    as enum
   ('active','selected','closed','withdrawn');
+create type public.pricing_mode     as enum ('fixed','volunteer','after_job');
 create type public.application_kind   as enum ('identity','professional');
 create type public.application_status as enum
   ('pending','approved','rejected','revoked');
@@ -290,7 +290,7 @@ only, spec-consistent).
 
 | Policy | SQL condition | Enforces |
 |---|---|---|
-| `ratings_select` (SELECT) | `helper_id = auth.uid() or rater_id = auth.uid() or public.is_admin()` | The *base table* is party-scoped: it carries `rater_id` + `request_id`, and a `true` policy would let any signed-in user dump who-rated-whom platform-wide — linkage the parent (rated, RLS-invisible) request no longer exposes. Third parties read ratings through the view below |
+| `ratings_select` (SELECT) | `helper_id = auth.uid() or rater_id = auth.uid() or public.is_admin()` | The *base table* is party-scoped: it carries `rater_id` + `request_id`, and a `true` policy would let any signed-in user dump who-rated-whom platform-wide — linkage the parent (rated, RLS-invisible) request keeps hidden. Third parties read ratings through the view below |
 
 ```sql
 -- The public rating surface (spec §9.2 "View rating | any signed-in user"):

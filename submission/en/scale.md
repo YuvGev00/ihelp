@@ -27,8 +27,8 @@ magnitude to spare; the interesting limits are all in *our* choices, listed in Â
 
 ## 3. Heavy Queries and the Indexes That Serve Them
 
-Every recurring query has a matching index (migration `0003_indexes.sql`);
-none of them require a table scan at any realistic size:
+Every recurring query has a matching index (defined in the schema
+migrations); none of them require a table scan at any realistic size:
 
 | Query (page) | Shape | Index |
 |---|---|---|
