@@ -6,7 +6,6 @@
 |---|---|
 | 🌐 **Live app (Vercel)** | https://ihelp-roan.vercel.app |
 | 💻 **GitHub repository** | https://github.com/YuvGev00/ihelp |
-| 🎥 **Product pitch (video)** | https://drive.google.com/file/d/1iW1diDh-2ZrK4r_3wXNYrOLCwBRmmv4X/view?usp=sharing |
 | 📄 **Easy-review guide** | [`docs/easy-review.md`](docs/easy-review.md) — what was built + a 5-minute review path |
 
 ## Demo logins (live site)

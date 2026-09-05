@@ -9,6 +9,7 @@ so you can confirm it works, with nothing to install.
 
 - **Live site:** https://ihelp-roan.vercel.app
 - **Code repository:** https://github.com/YuvGev00/ihelp
+- **Product pitch (video):** https://drive.google.com/file/d/1iW1diDh-2ZrK4r_3wXNYrOLCwBRmmv4X/view?usp=sharing
 
 ---
 
