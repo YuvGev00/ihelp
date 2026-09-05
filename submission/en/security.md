@@ -8,7 +8,7 @@
 Server Actions re-check it for friendly errors — but both are convenience
 layers. The layer that decides is PostgreSQL: Row Level Security policies for
 row access, table grants for verb access, CHECK/unique constraints for value
-and cross-row rules, and eleven SECURITY DEFINER functions (each with in-body
+and cross-row rules, and twelve SECURITY DEFINER functions (each with in-body
 permission checks) for atomic state transitions. A crafted HTTP request
 carrying a valid user JWT — bypassing our UI and server entirely — hits exactly
 the same wall, and the integration suite proves it by attempting every
@@ -53,9 +53,10 @@ Authorization is layered, and only the last layer is trusted (architecture §9):
 4. **PostgreSQL** — the authority:
    - **RLS policies** on all seven tables (every policy with its justification:
      technical design §2). No table has an `anon` policy of any kind.
-   - **Eleven SECURITY DEFINER RPCs** own every state transition (assign,
+   - **Twelve SECURITY DEFINER RPCs** own every state transition (assign,
      dual-complete, cancel, rate, review, revoke, hide, mark-paid, create
-     request, contact reveal, set final price). Each starts with a permission
+     request, contact reveal, set final price) plus the aggregate-only helper
+     reputation read (`get_helper_stats`). Each starts with a permission
      check; row locks make the transitions atomic (the withdraw-vs-assign race
      test proves the rollback). `set_final_price` is the model example of the
      in-body checks: only the *selected helper* may call it, only for an

@@ -73,6 +73,6 @@ set it on Vercel; no application code reads it.
 
 Every permission is enforced in the database: RLS policies for row access,
 unique/check constraints for cross-row rules, and a small audited set of
-SECURITY DEFINER functions (eleven RPCs) for atomic state transitions — the UI and
+SECURITY DEFINER functions (twelve RPCs) for atomic state transitions — the UI and
 server actions only mirror these rules for usability. A crafted API request
 carrying a user's JWT hits exactly the same wall. Details: `docs/technical-design.md` §2–§3.

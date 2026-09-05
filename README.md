@@ -12,7 +12,7 @@ Final project · *Internet Technologies — Become a Full-Stack Engineer* · RUN
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?style=flat-square&logo=supabase&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-63%20passing-0f6b4f?style=flat-square)
+![Tests](https://img.shields.io/badge/tests-65%20passing-0f6b4f?style=flat-square)
 
 **[🌐 Live app](https://ihelp-roan.vercel.app)** · **[📄 Easy-review guide](docs/easy-review.md)** · **[📚 All docs](#-documentation)**
 
@@ -81,7 +81,6 @@ The live site has six seeded demo accounts — all with the password **`12345678
 |---|---|
 | [Architecture](docs/architecture.md) | Components, technology choices, data flows, enforcement layers |
 | [Internal guide](docs/internal-architecture.md) | Repo tour, core flow, the decision index |
-| [Presentation](docs/presentation.md) | Talk track + demo script |
 | [Walkthrough](docs/project-walkthrough.md) | Follow-along setup, "is it up?" checks, core flow |
 | [File reference](docs/file-reference.md) | Every source file's purpose & implementation |
 | [Course-concepts map](docs/course-concepts-map.md) | Every taught concept → how it was built, why, and where in the code |
@@ -96,7 +95,7 @@ app/            Next.js App Router pages — (public) signed-out · (app) signed
 actions/        Server Actions — every write (request, offer, assign, rate, admin…)
 components/     React UI — forms, maps, the offer-comparison workbench, timeline
 lib/            Supabase clients · zod validation · geo (Haversine) · Hebrew strings
-supabase/       migrations/ — 15 SQL files: 7 tables, RLS, 11 RPCs, triggers
+supabase/       migrations/ — 15 SQL files: 7 tables, RLS, 12 RPCs, triggers
 tests/, e2e/    64 Vitest tests (incl. RLS "attack" tests) + 1 Playwright E2E
 docs/           All project documentation
 ```
@@ -150,7 +149,7 @@ never set on Vercel, and no application code reads it.
 
 Every permission is enforced in the database: RLS policies for row access,
 unique/check constraints for cross-row rules, and a small audited set of
-`SECURITY DEFINER` functions (eleven RPCs) for atomic state transitions. The UI
+`SECURITY DEFINER` functions (twelve RPCs) for atomic state transitions. The UI
 and Server Actions only mirror these rules for a friendly error — a crafted API
 request carrying a user's JWT hits exactly the same wall. Full detail:
 [technical design §2–§3](docs/technical-design.md).

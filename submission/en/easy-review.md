@@ -189,7 +189,7 @@ enforced, not just hidden.
 | Product specification | `product-spec.md` |
 | Technical design | `technical-design.md` |
 | Testing specification | `testing-spec.md` |
-| Test code | `test-code/` (also `tests/`, `e2e/`, `lib/*.test.ts` in the repo) |
+| Test code | in the repo: `tests/`, `e2e/`, `lib/*.test.ts` (packaged as `test-code/` in the submission ZIP) |
 | Basic scale | `scale.md` |
 | Basic security | `security.md` |
 | Running locally | `README.md` ("Running locally") |

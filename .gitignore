@@ -70,3 +70,7 @@ iHelp-submission/
 
 # Generated PDFs of the submission docs (built from the .md sources)
 submission/en/pdf/
+
+# Submission build artifacts (staging dir + archive, any suffix)
+iHelp-submission*/
+iHelp-submission*.zip

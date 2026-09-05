@@ -226,6 +226,7 @@ constraints.
 | `mark_paid(request_id)` | Owner check; flips `is_paid` once, post-completion, only when the selected offer carries an agreed amount (`coalesce(price, final_price)` — a volunteer job has nothing to mark) | A second permissive UPDATE policy would OR with the content-edit policy and reopen edits on finished jobs — permissive policies OR their USING/CHECK clauses independently |
 | `set_final_price(request_id, price)` | Selected-helper check; sets `final_price` on an `after_job` offer once, after the request is completed/rated; raises `invalid_price` on bad input | Old-vs-new column rule (write one column, once, in one state) on a row whose UPDATE rights otherwise ended when the offer left *active* — RLS cannot express any of that |
 | `get_counterpart_contact(request_id)` | Read-only: returns the other party's display name + phone (from `profiles_private`), only to the request owner or selected helper, from *assigned* onward | Column-level conditional exposure — row-level SELECT policies cannot reveal one column to one pair of users per row (spec §8.4) |
+| `get_helper_stats(helper_id)` | Read-only: returns a helper's aggregate reputation — completed-jobs count, per-category breakdown, and star-distribution histogram — as aggregates only, never a raw rating row | Definer aggregation over rows the caller cannot read individually, returning counts and a histogram so no rater/request linkage leaks (the helper reputation page) |
 
 **Trigger functions (invisible plumbing, same audit list):**
 
@@ -488,7 +489,7 @@ one above misses, and only the last one is trusted:
 3. **Server Action guards** — zod validation + fast permission pre-checks for
    friendly Hebrew errors. Convenience only.
 4. **Database** — RLS policies (per-row, per-action), unique/check constraints,
-   and the enumerated privileged-code inventory of §4.2 (eleven RPCs, four trigger
+   and the enumerated privileged-code inventory of §4.2 (twelve RPCs, four trigger
    functions, three policy helpers, one definer view — each with in-body
    permission checks where applicable). **This layer is the authority**; a
    crafted request that skips layers 1–3 still hits it with nothing but the

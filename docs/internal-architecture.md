@@ -22,7 +22,7 @@ Next.js 16 on Vercel
   lib/     ─ supabase clients │ geo │ validation │ strings │ errors
   ▼  anon key + user JWT on every call
 Supabase
-  Postgres ─ RLS policies + grants + constraints + 11 RPCs + 4 triggers + 3 helpers  ← THE AUTHORITY
+  Postgres ─ RLS policies + grants + constraints + 12 RPCs + 4 triggers + 3 helpers  ← THE AUTHORITY
   Auth     ─ email/password, cookie sessions
   Storage  ─ request-photos, verification-docs (private, signed URLs) + avatars (public)
 ```
@@ -101,7 +101,7 @@ directly to prove it."**
 **Architecture**
 - *Server Actions, no REST?* Less surface to secure; nothing external calls us (arch §7).
 - *profiles split in two?* RLS is row-level; helper cards need broad reads, so phone/coords/admin-flag live in an own-row-only table (arch §4.1).
-- *11 RPCs?* Every rule RLS cannot express: cross-owner writes, old-vs-new column rules, multi-table atomicity, column slicing (arch §4.2).
+- *12 RPCs?* Every rule RLS cannot express: cross-owner writes, old-vs-new column rules, multi-table atomicity, column slicing (arch §4.2).
 - *Maps without an API key?* Leaflet in the browser; the one third-party runtime dependency is OpenStreetMap raster tiles — display-only, keyless, free; a tile-server outage degrades to a blank map square, never breaks a flow.
 - *Avatars in a public bucket?* Avatars render in `<img>` across the app and are non-sensitive public-identity data like display_name — a public bucket avoids per-render signed URLs; writes stay own-folder-only (0012).
 - *No service key in app?* Leaking the deployment's env grants nothing beyond a signed-up user (arch §9).

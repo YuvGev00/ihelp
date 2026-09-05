@@ -336,7 +336,7 @@ accepted limitation documented in architecture §5.
 
 ## 3. Database Functions — full bodies (the privileged-code inventory)
 
-Conventions for all eleven: `security definer set search_path = public`, execute
+Conventions for all twelve: `security definer set search_path = public`, execute
 revoked from `public`/`anon` and granted to `authenticated`, permission checks
 first, business errors raised with stable codes the app maps to Hebrew
 (`P0001` + message in `not_found | forbidden | invalid_state | …`).
@@ -685,6 +685,32 @@ begin
     join public.profiles_private pp on pp.user_id = p.id
     where p.id = v_other;
 end $$;
+
+-- 3.12 Helper reputation: aggregates only, no rater/request linkage. SECURITY
+-- DEFINER so it can count over rows the caller cannot read individually,
+-- returning a helper's completed-jobs count, per-category breakdown, and a
+-- star-distribution histogram — never a raw rating row, so no linkage leaks.
+create or replace function public.get_helper_stats(p_helper_id uuid)
+returns jsonb
+language sql stable security definer set search_path = public as $$
+  select jsonb_build_object(
+    'completed_jobs', (
+      select count(*) from public.offers o
+      join public.help_requests r on r.assigned_offer_id = o.id
+      where o.helper_id = p_helper_id and o.status = 'selected'
+        and r.status in ('completed','rated')),
+    'rating_count', (select count(*) from public.ratings where helper_id = p_helper_id),
+    'rating_avg',   (select round(avg(stars)::numeric, 2) from public.ratings where helper_id = p_helper_id),
+    'distribution', coalesce((select jsonb_object_agg(stars::text, c) from (
+      select stars, count(*) c from public.ratings where helper_id = p_helper_id group by stars) d), '{}'::jsonb),
+    'categories',   coalesce((select jsonb_object_agg(category, c) from (
+      select r.category, count(*) c from public.offers o
+      join public.help_requests r on r.assigned_offer_id = o.id
+      where o.helper_id = p_helper_id and o.status = 'selected'
+        and r.status in ('completed','rated')
+      group by r.category order by count(*) desc limit 6) cat), '{}'::jsonb)
+  );
+$$;
 ```
 
 ### Triggers (four functions)
