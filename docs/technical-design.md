@@ -1,8 +1,7 @@
 # iHelp — Detailed Technical Design
 
-This document is the implementation blueprint. The SQL here *is* the schema —
-Phase 4 transcribes it into migrations. Every RLS policy carries the product-spec
-rule it enforces.
+This document describes the implemented system. The SQL here *is* the schema,
+and every RLS policy carries the product-spec rule it enforces.
 
 ---
 
@@ -15,6 +14,7 @@ create type public.request_status  as enum
   ('open','has_offers','assigned','completed','rated','cancelled');
 create type public.offer_status    as enum
   ('active','selected','closed','withdrawn');
+create type public.pricing_mode     as enum ('fixed','volunteer','after_job');
 create type public.application_kind   as enum ('identity','professional');
 create type public.application_status as enum
   ('pending','approved','rejected','revoked');
@@ -290,7 +290,7 @@ only, spec-consistent).
 
 | Policy | SQL condition | Enforces |
 |---|---|---|
-| `ratings_select` (SELECT) | `helper_id = auth.uid() or rater_id = auth.uid() or public.is_admin()` | The *base table* is party-scoped: it carries `rater_id` + `request_id`, and a `true` policy would let any signed-in user dump who-rated-whom platform-wide — linkage the parent (rated, RLS-invisible) request no longer exposes. Third parties read ratings through the view below |
+| `ratings_select` (SELECT) | `helper_id = auth.uid() or rater_id = auth.uid() or public.is_admin()` | The *base table* is party-scoped: it carries `rater_id` + `request_id`, and a `true` policy would let any signed-in user dump who-rated-whom platform-wide — linkage the parent (rated, RLS-invisible) request keeps hidden. Third parties read ratings through the view below |
 
 ```sql
 -- The public rating surface (spec §9.2 "View rating | any signed-in user"):
@@ -329,8 +329,9 @@ create policy "docs_read" on storage.objects for select to authenticated
 
 Bucket-level config: 5 MB object size limit, MIME allowlist
 (`image/jpeg`, `image/png`, `image/webp`). The known read-scope gap on
-`request-photos` (objects of hidden requests remain fetchable by path) is the
-accepted limitation documented in architecture §5.
+`request-photos` (objects of hidden requests remain fetchable by path) is an
+accepted, documented limitation: the URLs are unguessable and short-lived, and
+tightening the bucket read scope is a named improvement.
 
 ---
 
@@ -855,7 +856,7 @@ the one exception, delegated to Supabase's `auth.users` cascade).
 
 ## 5. API Description
 
-The full action inventory is architecture §7. Contract details:
+The Server Actions are organized by domain under `actions/` (§12). Contract details:
 
 - **Transport:** Server Actions (POST, same-origin, Next.js encrypted action IDs).
   No public REST surface; the DB's PostgREST endpoint *is* reachable with the
@@ -895,7 +896,7 @@ Postgres errors.
   read shapes worth naming: the feed (**`status in ('open','has_offers') and not
   is_hidden`** — matching `idx_requests_browse`; "open" in prose always means
   "not yet assigned" — capped 200, Haversine-sorted in `lib/geo.ts`, paginated
-  in-memory — architecture §8.1), the request detail (request + photos + offers
+  in-memory; the scale document analyses this read), the request detail (request + photos + offers
   visible to caller + rating + contact RPC when assigned), and helper profile
   (public profile + aggregate and list from the `helper_ratings` view).
 
@@ -1007,7 +1008,7 @@ and are re-bounded by bucket config server-side.
 
 ## 10. Error Handling
 
-Four failure classes, each with one handling rule (details: architecture §10):
+Four failure classes, each with one handling rule:
 
 1. **Validation** → zod issues map to `fieldErrors`; rendered inline in Hebrew.
 2. **Business/permission** → RPC codes and RLS denials map via the §5 table to a
@@ -1094,9 +1095,10 @@ proxy.ts                            # session refresh (Next 16 name for root
 
 **Seeding (demo/dev data):** auth users cannot be reliably created by plain SQL
 (the `auth` schema is GoTrue-owned and its internals are unversioned), so
-`scripts/seed.ts` uses the **service-role admin API locally only** — exactly the
-"local tooling for migrations/seeding" carve-out of architecture §9 — to create
-users, then inserts domain rows. The demo dataset the presentation needs:
+`scripts/seed.ts` uses the **service-role admin API locally only** — the one
+local-tooling carve-out to the "no service-role key in app code" rule (the
+security document covers it) — to create
+users, then inserts domain rows. The demo dataset:
 1 admin, 4 identity-verified users (1 with the professional badge),
 1 unverified user (to demo the gate), requests in **every** lifecycle state
 (open, has_offers, assigned, completed, rated, cancelled, plus one hidden),
@@ -1112,4 +1114,4 @@ offers in every status, and a few ratings so averages render.
 | Rating aggregate denormalization | Scale doc (when profile pages get hot) |
 | DB-side distance + keyset pagination | Scale doc (when the 200 cap shows) |
 | SMS phone verification, ID-photo retention limits | Security doc roadmap |
-| Email confirmation on signup | One-switch roadmap item (architecture §8.4) |
+| Email confirmation on signup | One-switch roadmap item (Supabase Auth config) |

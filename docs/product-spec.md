@@ -10,7 +10,7 @@ waiting for callbacks), the person **posts a help request** and verified helpers
 nearby **compete to offer their help** — for pay or as volunteers. When the help is
 done, both sides confirm completion and the requester rates the helper.
 
-The reversal shortens the path to help: demand is published once and supply comes
+The reversal creates competition on the help you need: demand is published once and supply comes
 to it, instead of demand chasing supply one phone call at a time. Trust is
 symmetric by design — every user who transacts, requester or helper, passes an
 admin-reviewed identity verification before their first transaction.
@@ -247,26 +247,26 @@ demand (see §6).
 
 ## 6. Business Goals
 
-1. **Validate the reversed-marketplace mechanic.** The hypothesis is that
+1. **(G1) Validate the reversed-marketplace mechanic.** The hypothesis is that
    publishing a request gets help with less effort than outbound search. The MVP
    measures its own side with absolute targets: median **time to first offer**
    and the share of requests receiving ≥1 offer within 24 hours. (Outbound-search
    duration has no in-product baseline, so "faster than searching" stays a
    hypothesis these metrics support rather than a claim they prove.)
-2. **Build a trust layer that compounds — on both sides.** Identity verification
+2. **(G2) Build a trust layer that compounds — on both sides.** Identity verification
    before any transaction (requester or helper), an optional reviewed professional
    credential, and a rating after every completion. Metrics: share of registered
    users completing identity verification, share of helpers holding the
    professional badge, average rating, share of completed requests that get rated.
-3. **Reach local liquidity.** The product is only useful where enough helpers see
+3. **(G3) Reach local liquidity.** The product is only useful where enough helpers see
    enough requests. Distance-sorted browsing concentrates attention locally.
    Metric: completion rate (assigned → completed) within a pilot area.
-4. **Create the future monetization surface.** Per-offer pricing stances
+4. **(G4) Create the future monetization surface.** Per-offer pricing stances
    (fixed / volunteer / price-after-job), agreed
    offer prices, and the paid-marker checkbox record exactly the data (volume and value
    of paid jobs per category/area) needed to price lead fees or commissions later —
    without operating payments now.
-5. **Serve the community.** Volunteering is first-class, not a side case: every
+5. **(G5) Serve the community.** Volunteering is first-class, not a side case: every
    offer can be a volunteer offer, on any request.
    This widens adoption beyond commercial transactions and is the product's
    social contribution.
