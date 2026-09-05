@@ -20,7 +20,7 @@ list. Each of the 10 required items is mapped below to where it lives.
 | 3 | **Product specification document** | [`product-spec.md`](product-spec.md) |
 | 4 | **Technical design document** | [`technical-design.md`](technical-design.md) |
 | 5 | **Testing specification document** | [`testing-spec.md`](testing-spec.md) |
-| 6 | **Test code** | In the repo: `tests/`, `e2e/`, `lib/*.test.ts` — 62 Vitest + 1 Playwright E2E (see item 5 for the map) |
+| 6 | **Test code** | In the repo: `tests/`, `e2e/`, `lib/*.test.ts` — 64 Vitest + 1 Playwright E2E (see item 5 for the map) |
 | 7 | **Basic scale document** | [`scale.md`](scale.md) |
 | 8 | **Basic security document** | [`security.md`](security.md) |
 | 9 | **Local-run instructions** | [`README.md`](README.md) (section "Running locally") |

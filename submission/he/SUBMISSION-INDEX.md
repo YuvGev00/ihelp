@@ -20,7 +20,7 @@
 | 3 | **מסמך אפיון מוצר** | [`product-spec.md`](product-spec.md) |
 | 4 | **מסמך תכנון טכני** | [`technical-design.md`](technical-design.md) |
 | 5 | **מסמך אפיון בדיקות** | [`testing-spec.md`](testing-spec.md) |
-| 6 | **קוד הבדיקות** | במאגר: `tests/`, `e2e/`, `lib/*.test.ts` — 62 בדיקות Vitest + בדיקת Playwright E2E אחת (ראו פריט 5 למיפוי) |
+| 6 | **קוד הבדיקות** | במאגר: `tests/`, `e2e/`, `lib/*.test.ts` — 64 בדיקות Vitest + בדיקת Playwright E2E אחת (ראו פריט 5 למיפוי) |
 | 7 | **מסמך סקייל בסיסי** | [`scale.md`](scale.md) |
 | 8 | **מסמך אבטחה בסיסית** | [`security.md`](security.md) |
 | 9 | **הוראות הרצה מקומית** | [`README.md`](README.md) (סעיף "Running locally") |

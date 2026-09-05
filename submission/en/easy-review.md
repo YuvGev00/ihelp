@@ -88,7 +88,8 @@ sealed bids: an offer is readable only by its owner and the request's owner).
 
 ## 8. The central processes
 
-The core loop, all runnable on the live site (see §11): post a request → helpers
+The core loop, all runnable on the live site (see the 5-minute review path
+below): post a request → helpers
 submit sealed offers with a pricing stance (fixed / volunteer / after-job) →
 the requester compares offers and picks one (an **atomic** assignment that closes
 all the others in a single transaction, and reveals the two phone numbers) →
@@ -97,7 +98,7 @@ public reputation page that never reveals who rated.
 
 ## 9. What tests were written
 
-**63 automated tests** (62 Vitest + 1 Playwright end-to-end), all passing. The
+**65 automated tests** (64 Vitest + 1 Playwright end-to-end), all passing. The
 most important are the **integration tests that attack the database as the wrong
 user** — they attempt a forbidden action (making yourself admin, reading a
 competitor's sealed offer, editing someone else's row) and assert it is denied.

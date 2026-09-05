@@ -97,7 +97,7 @@ actions/        Server Actions — every write (request, offer, assign, rate, ad
 components/     React UI — forms, maps, the offer-comparison workbench, timeline
 lib/            Supabase clients · zod validation · geo (Haversine) · Hebrew strings
 supabase/       migrations/ — 15 SQL files: 7 tables, RLS, 11 RPCs, triggers
-tests/, e2e/    62 Vitest tests (incl. RLS "attack" tests) + 1 Playwright E2E
+tests/, e2e/    64 Vitest tests (incl. RLS "attack" tests) + 1 Playwright E2E
 docs/           All project documentation
 ```
 

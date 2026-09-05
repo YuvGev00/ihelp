@@ -17,7 +17,7 @@ by an explicit signal.
 |---|---|---|---|
 | Feed (`/requests`) | Trivial: one indexed SELECT, ≤ 200 rows, in-memory sort | Still fine: the fetch is **capped at 200 rows** regardless of table size | Requests beyond the newest 200 stop appearing in the feed (see §5) |
 | Request detail | 4–6 single-key reads + one bulk signed-URL call | Same — all keyed by `request_id` | Nothing until offers-per-request grow unusually large |
-| Writes (offers, transitions) | Single-row RPCs with row locks | Row locks serialize only *per request* — different requests never contend | Hot single request with many simultaneous offers (acceptable: inserts don't take the request lock; only assign/cancel/complete do) |
+| Writes (offers, transitions) | Single-row RPCs with row locks | Row locks serialize only *per request* — different requests never contend | Many simultaneous offers on one hot request briefly serialize on that request's status update (acceptable at this scale) |
 | Auth/session | Middleware refresh per request | Supabase Auth scales independently of us | — |
 | Admin review queue | Human-bound, not machine-bound | **The manual queue is the product's real bottleneck** (spec §14) — a staffing problem before a technical one | Queue latency, visible in `idx_applications_queue` |
 | Storage | ≤ 5 MB/object, ≤ 5 photos/request | Linear growth, CDN-served signed URLs | Orphaned objects accumulate (§7) |
@@ -34,7 +34,7 @@ migrations); none of them require a table scan at any realistic size:
 |---|---|---|
 | Feed | `status in (open,has_offers) and not is_hidden order by created_at desc limit 200` | `idx_requests_browse (status, is_hidden, created_at desc)` |
 | My requests | `requester_id = ? order by created_at desc` | `idx_requests_owner` |
-| Offers on a request (detail) | `request_id = ? and status='active'` | `idx_offers_request` (partial on active) |
+| Offers on a request (detail) | `request_id = ?` (offers visible to the caller under RLS) | `idx_offers_request` |
 | My offers | `helper_id = ? order by created_at desc` | `idx_offers_helper` |
 | Photos of a request | `request_id = ? order by position` | `idx_photos_request` |
 | Helper rating aggregate | `helper_id = ?` on `ratings` / the view | `idx_ratings_helper` |

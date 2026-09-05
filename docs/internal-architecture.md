@@ -132,7 +132,7 @@ directly to prove it."**
 
 ## 6. Test Story (30 seconds)
 
-62 vitest tests + 1 Playwright spec. The pyramid is deliberately inverted
+64 vitest tests + 1 Playwright spec. The pyramid is deliberately inverted
 toward **integration**: 31 tests create real users against a real Postgres and
 attack every permission as the wrong user — the suite's centerpiece is denial,
 not happy paths, because the product's claim is "the database says no."

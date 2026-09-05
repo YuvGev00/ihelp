@@ -9,6 +9,7 @@ import type { SupabaseClient } from "@supabase/supabase-js";
 import {
   stackConfigured,
   anonClient,
+  serviceClient,
   newUser,
   makeAdmin,
   verifyIdentity,
@@ -394,5 +395,41 @@ describe.skipIf(!stackConfigured)("permissions & DB integrity (integration)", ()
       p_note: null,
     });
     expect(approveStale?.message).toContain("invalid_state");
+  }, 30_000);
+
+  // D4: at most one rating per request — the ratings PK is request_id.
+  it("D4: a second rating on the same request violates the PK", async () => {
+    const svc = serviceClient();
+    // Insert one rating directly (service role bypasses RLS; we are testing the
+    // PK constraint, not the policy).
+    const first = await svc.from("ratings").insert({
+      request_id: requestId,
+      helper_id: helper.id,
+      rater_id: owner.id,
+      stars: 5,
+    });
+    expect(first.error).toBeNull();
+    const second = await svc.from("ratings").insert({
+      request_id: requestId,
+      helper_id: helper.id,
+      rater_id: owner.id,
+      stars: 3,
+    });
+    expect(second.error).not.toBeNull(); // duplicate PK on request_id
+    await svc.from("ratings").delete().eq("request_id", requestId);
+  }, 30_000);
+
+  // D5: a professional application must carry a document (CHECK constraint).
+  it("D5: a professional application without a document is rejected", async () => {
+    const { error } = await helper.client
+      .from("verification_applications")
+      .insert({
+        user_id: helper.id,
+        kind: "professional",
+        full_name: "בעל מקצוע",
+        self_description: "no doc",
+        doc_path: null, // violates professional_requires_doc
+      });
+    expect(error).not.toBeNull();
   }, 30_000);
 });

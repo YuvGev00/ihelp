@@ -36,9 +36,9 @@ Integration and E2E tests **skip automatically** when no local stack is
 detected (`SUPABASE_URL` absent), so `npm test` always passes in a bare
 checkout while the full suite runs where it matters.
 
-The suite totals **62 Vitest tests** across 5 files — 31 integration
-(lifecycle 11 + permissions 20), geo 6, validation schemas 15, component UI 10 —
-plus 1 Playwright E2E spec, for **63 automated tests** in all.
+The suite totals **64 Vitest tests** across 5 files — 33 integration
+(lifecycle 11 + permissions 22), geo 6, validation schemas 15, component UI 10 —
+plus 1 Playwright E2E spec, for **65 automated tests** in all.
 
 ## 3. What Is Tested and Why (assignment stage-6 checklist)
 
