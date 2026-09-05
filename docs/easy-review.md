@@ -1,112 +1,199 @@
-# iHelp — מסמך לבדיקה קלה (מה בניתי ואיך לבדוק)
+# iHelp — Project Overview & Review Guide
 
 **Internet Technologies — Become a Full-Stack Engineer · RUNI CS 2026**
 
-מסמך זה מיועד לבודק/ת שלא צפו בהצגה חיה. הוא מסביר בקצרה **מה בניתי**, ונותן
-**מסלול בדיקה של ~5 דקות** כדי לראות שהמוצר עובד — בלי צורך להתקין כלום.
+This document stands in for a live presentation: it walks through everything a
+presentation would cover — what the product is, who it's for, how it's built,
+and every technical decision — and then gives a **5-minute hands-on review path**
+so you can confirm it works, with nothing to install.
 
-- **האתר החי:** https://ihelp-roan.vercel.app
-- **מאגר הקוד:** https://github.com/YuvGev00/ihelp
-
----
-
-## 1. מה זה iHelp (בשורה)
-
-**שוק עזרה הפוך.** במקום שמי שצריך עזרה יחפש בעל מקצוע ויתקשר סביב, הוא **מפרסם
-בקשה אחת**, ועוזרים מאומתים בסביבתו **מתחרים** בהצעות לעזור — בתשלום או בהתנדבות.
-המבקש בוחר הצעה, שני הצדדים מאשרים שהעבודה בוצעה, והמבקש מדרג את העוזר.
-
-**הרעיון הטכני המרכזי:** *מסד הנתונים הוא הסמכות היחידה.* כל כלל הרשאה נאכף
-ב-PostgreSQL (RLS + פונקציות SECURITY DEFINER + טריגרים) — לא בקוד של האתר. גם
-בקשה שעוקפת את הממשק נבלמת במסד.
+- **Live site:** https://ihelp-roan.vercel.app
+- **Code repository:** https://github.com/YuvGev00/ihelp
 
 ---
 
-## 2. גישה מהירה (חשבונות הדגמה)
+## 1. What the product is
 
-כל חשבונות ההדגמה באתר החי משתמשים בסיסמה **`12345678`**:
+**iHelp is a reversed help-marketplace.** Instead of a person who needs help
+searching for a provider and calling around, they **post a single request**, and
+identity-verified helpers nearby **compete** with offers — for pay or as
+volunteers. The requester picks one offer, both sides confirm the work is done,
+and the requester rates the helper. Demand is published once, and supply comes
+to it.
 
-| אימייל | תפקיד | למה שימושי לבדיקה |
+## 2. The problem it solves
+
+Finding trustworthy, available help is slow and one-directional: you search,
+compare, and phone providers one by one, and they can't even see that you need
+help. Trust is hard to establish and has to run **both ways** — a fake request
+endangers a helper just as a fake helper endangers a requester. And small,
+volunteer-suitable tasks (a ride, help with a form) have willing neighbours but
+no channel connecting them. iHelp inverts the search and verifies both sides.
+
+## 3. Who the users are
+
+One account type — the same person can request help in the morning and offer
+help in the afternoon; permissions are attached to **rows, not accounts**. Three
+roles appear: a **requester**, a **verified helper** (optionally with a reviewed
+professional badge), and an **admin** who reviews verifications and moderates.
+
+## 4. Why it has business value
+
+The **customer** — the side that would be monetized — is the professional
+helper: iHelp is a lead-generation channel that delivers nearby, ready-to-buy
+demand. Requesters are free **by design**, because charging the demand side
+would suppress the liquidity that makes the platform valuable to supply. The
+pricing data already recorded (each offer's price/stance, the paid marker) is
+exactly what a future lead-fee or commission model would need — without
+operating payments now.
+
+## 5. How the system is built
+
+Three tiers with deliberately few moving parts:
+
+```
+Browser (Hebrew, RTL)
+   │  reads = React Server Components   ·   writes = Server Actions
+   ▼
+Next.js 16 (App Router) on Vercel        ← no separate API server
+   │  every call carries the signed-in user's JWT
+   ▼
+Supabase = PostgreSQL (RLS) + Auth + Storage
+```
+
+Reads are Server Components that query the database while rendering; writes are
+typed Server Actions. There is no custom backend and no REST API to secure.
+
+## 6. The architecture — the database is the only authority
+
+The thesis of the whole project: **every permission rule is enforced inside
+PostgreSQL** — Row Level Security policies, plus a small set of `SECURITY
+DEFINER` functions for the rules RLS can't express, plus guard triggers. The UI
+and Server Actions repeat those checks only for a friendly error; nothing depends
+on them for safety. A crafted request that bypasses the interface still hits the
+database with nothing but the caller's own identity, and is refused. That's why
+the app never uses the service-role key — even admin actions run as the
+signed-in user. The one design decision worth calling out: the `profiles` table
+is split into a public row and a **private** row (phone, coordinates, admin
+flag), because RLS is row-level, not column-level.
+
+## 7. What the database looks like
+
+Seven tables: `profiles` / `profiles_private`, `verification_applications`,
+`help_requests`, `offers`, `request_photos`, `ratings`. A request moves through a
+strict state machine — `open → has_offers → assigned → completed → rated` (plus
+a `cancelled` branch) — modelled as an enum with one timestamp column per state.
+Each RLS policy carries a comment naming the product rule it enforces (e.g.
+sealed bids: an offer is readable only by its owner and the request's owner).
+
+## 8. The central processes
+
+The core loop, all runnable on the live site (see §11): post a request → helpers
+submit sealed offers with a pricing stance (fixed / volunteer / after-job) →
+the requester compares offers and picks one (an **atomic** assignment that closes
+all the others in a single transaction, and reveals the two phone numbers) →
+**both** sides confirm completion → the requester rates the helper, updating a
+public reputation page that never reveals who rated.
+
+## 9. What tests were written
+
+**63 automated tests** (62 Vitest + 1 Playwright end-to-end), all passing. The
+most important are the **integration tests that attack the database as the wrong
+user** — they attempt a forbidden action (making yourself admin, reading a
+competitor's sealed offer, editing someone else's row) and assert it is denied.
+A happy-path-only test proves nothing; asserting denial is the point. The
+Playwright test drives the whole core loop through the real UI in two isolated
+browser sessions.
+
+## 10. How scale was considered
+
+Designed for tens-to-hundreds of users. The heaviest read is the feed: it fetches
+a capped 200 open requests, computes distance in TypeScript (Haversine — no
+PostGIS, no paid maps), sorts in memory, and paginates 12 per page. Every hot
+query has a matching index; list queries select explicit columns (no
+over-fetching); all reads are server-side with no client cache. Every limit has a
+named successor (e.g. DB-side distance with keyset pagination when the 200 cap
+bites). The honest observation: what breaks first at scale isn't the database —
+it's the **human admin verification queue**.
+
+## 11. How security was considered
+
+Four enforcement layers, and only the last is trusted: middleware, UI, Server
+Action guards, and the **database**. Authentication is Supabase Auth
+(email + password, bcrypt-hashed; sessions in HttpOnly/Secure/SameSite cookies,
+the JWT on every call). Authorization is RLS + the SECURITY DEFINER functions.
+The public anon key is safe to ship **because** RLS is the authority; the
+service-role key is in zero lines of app code. XSS, CSRF, and SQL injection are
+structurally neutralized (React auto-escaping, same-origin encrypted Server
+Actions, parameterized queries only). The security document keeps an honest list
+of remaining risks (manual identity review, request coordinates readable by
+signed-in users) with a named improvement for each.
+
+## 12. What I'd improve with more time
+
+In-app chat between the matched pair (they exchange phone numbers today); SMS OTP
+to actually verify the phone; in-app notifications so users don't have to
+refresh; and requester-side reputation to close the trust symmetry fully. All
+were deliberate cuts to keep the MVP small, clean, and secure.
+
+---
+
+## Quick access (demo accounts)
+
+All demo accounts on the live site use the password **`12345678`**:
+
+| Email | Role | Useful for |
 |---|---|---|
-| `dana@ihelp.demo` | מבקשת (מאומתת) | לפרסם בקשה, לבחור הצעה, לדרג |
-| `yossi@ihelp.demo` | עוזר מקצועי (מאומת + תג) | להגיש הצעה על בקשה |
-| `admin@ihelp.demo` | מנהל | לאשר אימותי זהות, להסתיר בקשות |
-| `noa@ihelp.demo` | לא מאומתת | לראות את שער האימות שחוסם פעולות |
+| `dana@ihelp.demo` | Requester (verified) | Post a request, compare offers, rate |
+| `yossi@ihelp.demo` | Professional helper (verified + badge) | Submit an offer |
+| `admin@ihelp.demo` | Admin | Approve verifications, hide requests |
+| `noa@ihelp.demo` | Not verified | See the verification gate that blocks actions |
 
-> **טיפ:** כדי לשחק מבקש ועוזר בו-זמנית, השתמשו ב**שני דפדפנים נפרדים** (או רגיל
-> + חלון פרטי) — לא שתי לשוניות באותו חלון, כי הן חולקות עוגיית התחברות.
-
-**האם האתר ער?** מסד הנתונים בשכבה החינמית של Supabase עלול "להירדם" אחרי כמה
-ימי חוסר פעילות. בדיקה מהירה: פתחו https://ihelp-roan.vercel.app/api/health —
-אם מקבלים `{"ok":true,"db":"reachable"}` הכול פעיל. אם לא — יש להעיר אותו
-דרך לוח הבקרה של Supabase ולהמתין 1–2 דקות.
-
----
-
-## 3. מסלול בדיקה של 5 דקות (הלולאה המרכזית)
-
-זה התהליך המרכזי של המוצר. אפשר לעבור עליו כולו באתר החי:
-
-1. **התחברות כמבקשת** — `dana@ihelp.demo` / `12345678`.
-2. **פרסום בקשה** — לחצו "בקשת עזרה חדשה" (`/requests/new`), מלאו כותרת, תיאור,
-   קטגוריה, אשרו מיקום, ופרסמו. *התמונה אינה חובה* — אפשר לפרסם בלי. הבקשה תעלה
-   בסטטוס "פתוחה".
-3. **התחברות כעוזר** (בדפדפן שני) — `yossi@ihelp.demo` / `12345678`, פתחו את
-   אותה בקשה והגישו הצעה (בחרו עמדת תמחור: מחיר קבוע / התנדבות / מחיר אחרי
-   העבודה). העוזר **לא רואה** הצעות מתחרות.
-4. **בחירה** — חזרו לדפדפן של דנה, רעננו (הסטטוס עכשיו "יש הצעות"), פתחו את
-   שולחן השוואת ההצעות, ובחרו את ההצעה. השיבוץ אטומי — סוגר את כל שאר ההצעות
-   בטרנזקציה אחת. עכשיו נחשפים מספרי הטלפון לשני הצדדים בלבד.
-5. **אישור דו-צדדי** — שני הצדדים לוחצים "אישור שהעזרה הושלמה". רק כששניהם
-   אישרו, הבקשה עוברת ל"הושלמה".
-6. **דירוג** — דנה נותנת דירוג לעוזר. עמוד המוניטין הציבורי שלו מתעדכן — בלי
-   לחשוף מי דירג.
-
-**בונוס — שער האימות:** התחברו כ-`noa@ihelp.demo` (לא מאומתת) ונסו לפרסם בקשה —
-תופנו לעמוד האימות. זה מדגים שהרשאות נאכפות, לא רק מוסתרות.
+> **Tip:** to play requester and helper at once, use **two separate browsers**
+> (or a normal + a private window) — not two tabs, which share the login cookie.
+>
+> **Is the site awake?** Open https://ihelp-roan.vercel.app/api/health — a
+> `{"ok":true,"db":"reachable"}` response means the free-tier database is live.
+> If not, wake it from the Supabase dashboard and wait 1–2 minutes.
 
 ---
 
-## 4. איפה כל דבר בקוד (מפה מהירה)
+## 5-minute review path (the core loop)
 
-| תחום | היכן | מה יש שם |
-|---|---|---|
-| מסד הנתונים | `supabase/migrations/*.sql` | 15 מיגרציות: 7 טבלאות, RLS, 11 פונקציות RPC, טריגרים — **מקור האמת** |
-| כתיבות | `actions/*.ts` | Server Actions: יצירת בקשה, הצעה, שיבוץ, סיום, דירוג, אדמין, אימות |
-| קריאות + ולידציה | `lib/` | לקוחות Supabase, סכמות zod, מתמטיקת מרחק (Haversine), מחרוזות עברית |
-| עמודים | `app/` | Next.js App Router — פיד, עמוד בקשה, פרופיל עוזר, אדמין, אימות |
-| רכיבים | `components/` | טפסים, מפות, שולחן השוואת הצעות, ציר זמן |
-| בדיקות | `tests/`, `e2e/`, `*.test.ts` | 62 בדיקות Vitest + בדיקת Playwright E2E אחת = 63 בסך הכול |
+1. **Log in as the requester** — `dana@ihelp.demo` / `12345678`.
+2. **Post a request** — "New help request" (`/requests/new`): title, description,
+   category, confirm location, post. *A photo is optional.* Status becomes "Open".
+3. **Log in as the helper** (second browser) — `yossi@ihelp.demo` / `12345678`,
+   open the same request, submit an offer (pick a pricing stance). The helper
+   does **not** see competing offers.
+4. **Select** — back in Dana's browser, refresh (status "Has offers"), open the
+   offer-comparison workbench, pick the offer. The assignment is atomic and closes
+   the others; the phone numbers are now revealed to the two parties only.
+5. **Both confirm** — each side clicks "Confirm the help was completed"; only when
+   both have does the request become "Completed".
+6. **Rate** — Dana rates the helper; his public reputation page updates without
+   revealing who rated.
+
+**Bonus — the verification gate:** log in as `noa@ihelp.demo` (unverified) and
+try to post — you're redirected to the verification page, proving permissions are
+enforced, not just hidden.
 
 ---
 
-## 5. איפה כל דרישת מטלה נענית
+## Where each submission item is
 
-| דרישה | היכן לראות |
+| Item | Where |
 |---|---|
-| מסמך אפיון מוצר | `docs/product-spec.md` |
-| תכנון טכני | `docs/technical-design.md` |
-| אפיון בדיקות | `docs/testing-spec.md` |
-| קוד בדיקות | `tests/`, `e2e/`, `lib/*.test.ts` |
-| סקייל בסיסי | `docs/scale.md` |
-| אבטחה בסיסית | `docs/security.md` |
-| הרצה מקומית | `README.md` (סעיף "Running locally") |
-| האתר החי | https://ihelp-roan.vercel.app |
-| מאגר GitHub | https://github.com/YuvGev00/ihelp |
+| Product specification | `product-spec.md` |
+| Technical design | `technical-design.md` |
+| Testing specification | `testing-spec.md` |
+| Test code | `test-code/` (also `tests/`, `e2e/`, `lib/*.test.ts` in the repo) |
+| Basic scale | `scale.md` |
+| Basic security | `security.md` |
+| Running locally | `README.md` ("Running locally") |
+| Live site | https://ihelp-roan.vercel.app |
+| GitHub repository | https://github.com/YuvGev00/ihelp |
 
-**מסמכים נוספים להעמקה:** `docs/architecture.md` (ארכיטקטורה),
-`docs/internal-architecture.md` (מדריך פנימי + מדד ההחלטות),
-`docs/file-reference.md` (כל קובץ בפרויקט),
-`docs/course-concepts-map.md` (כל נושא קורס → איך מומש, למה, ואיפה בקוד).
-
----
-
-## 6. שלוש נקודות שכדאי לשים לב אליהן
-
-1. **מסד הנתונים אוכף הכול.** לא הקוד. יש 62 בדיקות, ומהן 15 בדיקות שמתחזות
-   למשתמש הלא-נכון ומוודאות שהמסד **דוחה** אותן. זו טענת האבטחה המרכזית.
-2. **חשבון אחד, כמה תפקידים.** אין "חשבון מבקש" ו"חשבון עוזר" נפרדים — אותו אדם
-   יכול לבקש ולעזור. ההרשאות מוצמדות לשורות, לא לחשבון.
-3. **קיצוצים מכוונים.** אין תשלומים אמיתיים (רק רישום מחיר + סימון "שולם"), אין
-   צ'אט, אין PostGIS — כל אלה החלטות מודעות לטובת MVP קטן, נקי ומאובטח. הנימוקים
-   מתועדים ב-`docs/product-spec.md §10`.
+Deeper reference (in the repository's `docs/` folder): architecture, an internal
+guide with the decision index, a file-by-file reference, and a map of each course
+concept to how it was implemented and where.
