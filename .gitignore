@@ -67,3 +67,6 @@ Internet Technologies.pdf
 # Built submission archive (regenerated on demand)
 iHelp-submission.zip
 iHelp-submission/
+
+# Generated PDFs of the submission docs (built from the .md sources)
+submission/en/pdf/
