@@ -557,7 +557,7 @@ supabase/
   migrations/          # SQL: schema, RLS, RPCs, triggers, storage policies
 docs/                  # the submission documents (product, architecture,
                        # technical design, testing, scale, security) + internal
-                       # guide, presentation, walkthrough, file & concepts maps
+                       # guide, walkthrough, file & concepts maps
 ```
 
 ---

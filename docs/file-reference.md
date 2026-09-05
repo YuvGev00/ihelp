@@ -163,6 +163,5 @@ input with zod → call the DB (RPC or table write) → the DB is the real gate 
 | `scale.md` | Load analysis, indexes, pagination, limits and their named successors. |
 | `security.md` | Auth/authz layers, secrets, env vars, remaining risks. |
 | `internal-architecture.md` | Internal guide — repo tour, flows, and the *decision index* (the "why" behind each choice). |
-| `presentation.md` | The presentation run-sheet (talk track + demo script). |
-| `project-walkthrough.md` | The follow-along guide (setup, run, understand, present). |
+| `project-walkthrough.md` | The follow-along guide (setup, run, understand, demo). |
 | `file-reference.md` | **This file** — every file's purpose and implementation. |

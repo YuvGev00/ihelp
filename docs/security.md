@@ -187,7 +187,7 @@ Honest list, ordered by how soon each should be addressed:
 | R6 | ID-photo retention indefinite while account is verified | Private bucket, admin-only read | Retention job: delete document objects N days after a decision |
 | R7 | Phone remains visible to the counterpart after completion | By design (coordination); parties only | Time-box the contact reveal (e.g., revoke N days after `rated`) |
 | R8 | Single human admin = availability and abuse single-point | Full audit trail (`verification_applications`, `decided_by`) | Second admin + four-eyes revocation; audit log surface |
-| R9 | Demo seed accounts on the presentation instance | Env-supplied password, printed once | Rotate/delete demo users right after the demo |
+| R9 | Demo seed accounts live on the deployed instance | Env-supplied password, printed once | Rotate/delete demo users once review is complete |
 | R10 | Dependency drift (Next/Supabase/zod majors move fast) | Lockfile pins; CI-less repo relies on local runs | Dependabot + the test suite as the upgrade gate |
 
 One class of attack is closed by design rather than left on this list: the

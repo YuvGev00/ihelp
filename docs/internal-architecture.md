@@ -1,8 +1,8 @@
-# iHelp — Internal Architecture Guide (presentation prep)
+# iHelp — Internal Architecture Guide
 
 **Purpose (assignment §11):** the map for explaining the system "מבפנים ומבחוץ" —
 architecture, central files, flows, database, tests, and every technical
-decision with its why. Read this before the presentation; every claim links to
+decision with its why. Read this for the full picture; every claim links to
 the file that proves it.
 
 ---
@@ -144,5 +144,5 @@ GitHub `main` → Vercel (build + host; two public env vars) — and separately 
 Supabase cloud project (migrations pushed via `supabase db push`, buckets and
 policies created by the same SQL, email confirmation OFF, seed via
 `scripts/seed.ts` pointed at the cloud URL with its service key, admin flag set
-in the SQL editor). Nothing else. Demo accounts get rotated after the
-presentation (security R9).
+in the SQL editor). Nothing else. Demo accounts get rotated once review is
+complete (security R9).

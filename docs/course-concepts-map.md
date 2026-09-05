@@ -62,7 +62,7 @@ codes (200/302/401/403/404/503) carry meaning.
   renders `app/(app)/not-found.tsx`. "Forbidden" and "doesn't exist" look
   identical **on purpose** (no existence leak).
 - **503** — `app/api/health/route.ts` returns 503 `{ok:false}` when the DB is
-  unreachable (used by the keep-alive cron and the presentation health-check).
+  unreachable (used by the keep-alive cron and the "is it up?" health-check).
 
 **Why:** we lean on framework-standard semantics (PRG, same-origin POST) instead
 of hand-rolling an HTTP layer, so there is less surface to get wrong.

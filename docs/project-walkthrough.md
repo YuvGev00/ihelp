@@ -2,7 +2,7 @@
 
 This is the hand-holding guide: how to get the project running, how the pieces
 fit, and how to walk through it — whether you're setting up on a fresh machine,
-demoing, or just re-familiarizing yourself before the presentation.
+demoing, or just re-familiarizing yourself with the project.
 
 - **Live app:** https://ihelp-roan.vercel.app
 - **Repo:** https://github.com/YuvGev00/ihelp
@@ -11,8 +11,7 @@ demoing, or just re-familiarizing yourself before the presentation.
   price / volunteer / price-after-the-job); the requester picks one; both confirm
   completion; the requester rates the helper.
 
-> **Companion docs:** for *what to say* in the presentation see
-> `presentation.md`; for a file-by-file explanation see
+> **Companion docs:** for a file-by-file explanation see
 > `file-reference.md`; for the deep "why" behind decisions see
 > `internal-architecture.md`.
 
@@ -48,7 +47,7 @@ The app has two independent moving parts. Check both:
 
 The seeded demo accounts on the **live** site
 (https://ihelp-roan.vercel.app/login) all share one simple password so you can
-log in fast during the presentation:
+log in fast when reviewing:
 
 | Email | Password | Role |
 |---|---|---|
@@ -59,7 +58,7 @@ log in fast during the presentation:
 | `amir@ihelp.demo` | `12345678` | Helper (identity-verified) |
 | `noa@ihelp.demo` | `12345678` | Unverified — use to show the verification gate + admin queue |
 
-> These are throwaway presentation logins holding no real data, which is why the
+> These are throwaway demo logins holding no real data, which is why the
 > shared `12345678` password is fine. To reset them again (e.g. after Supabase
 > rotates keys), run — with the project's **secret** key from the Supabase
 > dashboard (Project Settings → API Keys → the key labeled *Secret*, formerly
@@ -202,9 +201,9 @@ business logic, by design.
 
 ---
 
-## Part E — Presenting (the short version)
+## Part E — Demoing the core loop (the short version)
 
-The full run-sheet is `presentation.md`. The essentials:
+The essentials for walking someone through the product:
 
 - **Resume Supabase first** (Part A) and confirm `/api/health` is green.
 - **Two separate browsers**, logged in as Dana (requester) and Yossi (helper),
