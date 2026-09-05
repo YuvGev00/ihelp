@@ -1,14 +1,10 @@
--- iHelp: the requester no longer declares paid/volunteer (product change
--- 2026-07-06). Pricing belongs entirely to the helper's offer: every request
--- can receive fixed-price, after-job, and volunteer offers alike. A request is
--- simply a description of what is needed.
---
--- This removes help_requests.payment_type and the cross-table rule that limited
--- charging to "paid" requests — charging is now allowed on any request.
+-- iHelp: pricing belongs entirely to the helper's offer; a request is simply a
+-- description of what is needed. Every request can receive fixed-price,
+-- after-job, and volunteer offers alike.
 
--- 1. Relax the offer policies FIRST: they reference payment_type, so the column
--- cannot be dropped while they exist. Any identity-verified helper may now offer
--- with any pricing_mode on any open/visible request.
+-- 1. Rebuild the offer policies (they reference the column being dropped).
+-- Any identity-verified helper may offer with any pricing_mode on any
+-- open/visible request.
 drop policy offers_insert on public.offers;
 create policy offers_insert on public.offers
   for insert to authenticated
@@ -29,7 +25,7 @@ create policy offers_update_own on public.offers
   using (helper_id = auth.uid() and status = 'active')
   with check (helper_id = auth.uid() and status in ('active','withdrawn'));
 
--- 2. Now the column has no dependents — drop the requester intent.
+-- 2. With no policy dependents, drop the column.
 alter table public.help_requests drop column payment_type;
 
 -- 3. create_request_with_photos loses its payment_type parameter (signature
@@ -92,5 +88,5 @@ revoke execute on function public.create_request_with_photos(
 grant execute on function public.create_request_with_photos(
   text, text, text, double precision, double precision, text[]) to authenticated;
 
--- 4. Drop the now-unused payment_type enum (nothing references it).
+-- 4. Drop the payment_type enum (nothing references it).
 drop type public.payment_type;

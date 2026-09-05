@@ -317,7 +317,7 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
   }, 30_000);
 
   it("F8: after_job offer — helper sets the final price post-completion", async () => {
-    const requestId = await createRequestFixture(requester); // paid request
+    const requestId = await createRequestFixture(requester);
     // helper offers with price decided after the job
     const { data: offer, error: offerErr } = await helperA.client
       .from("offers")
@@ -399,8 +399,8 @@ describe.skipIf(!stackConfigured)("request lifecycle (integration)", () => {
   }, 30_000);
 
   it("D10: a helper cannot INSERT an offer with a pre-set final_price (security)", async () => {
-    // Regression for the final_price INSERT bypass: fabricating final_price at
-    // offer time would defeat the set_final_price RPC and poison mark_paid.
+    // Fabricating final_price at offer time would defeat the set_final_price
+    // RPC and poison mark_paid — the INSERT policy pins final_price null.
     const requestId = await createRequestFixture(requester);
     const forged = await helperA.client.from("offers").insert({
       request_id: requestId,

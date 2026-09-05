@@ -1,14 +1,12 @@
--- iHelp: helpers dictate the price (product change, 2026-07-03).
--- The request keeps payment_type as the requester's INTENT (feed filter,
--- expectation-setting); the price moves to the offer: each offer carries a
--- price, or none (= volunteering). A helper may volunteer even on a paid
--- request; offers on a volunteer request must be free.
+-- iHelp: pricing lives on the offer, not the request.
+-- Each offer carries a price, or none (= volunteering). A helper may volunteer
+-- on any request.
 
 -- 1. Requests lose the requester-set amount.
 alter table public.help_requests drop constraint amount_matches_type;
 alter table public.help_requests drop column amount;
 
--- 2. Offers gain the price; free-text terms are superseded by it.
+-- 2. Offers carry a price (or none = volunteering).
 alter table public.offers drop column proposed_terms;
 alter table public.offers add column price numeric(10,2)
   check (price is null or (price > 0 and price <= 99999.99));
@@ -107,9 +105,8 @@ grant execute on function public.create_request_with_photos(
   text, text, text, public.payment_type,
   double precision, double precision, text[]) to authenticated;
 
--- 5. mark_paid now keys off the AGREED price — the selected offer's — not the
--- request's payment_type: a volunteered job (even on a paid request) has
--- nothing to mark as paid.
+-- 5. mark_paid keys off the AGREED price — the selected offer's. A volunteered
+-- job has nothing to mark as paid.
 create or replace function public.mark_paid(p_request_id uuid)
 returns void
 language plpgsql security definer set search_path = public as $$

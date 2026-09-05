@@ -1,9 +1,7 @@
--- iHelp: make request photos optional (product change 2026-08-31).
+-- iHelp: request photos are optional (0–5).
 --
--- Until now every help request required 1–5 photos. This was friction for
--- requests with nothing physical to show (a ride, help with a form). Photos
--- are now OPTIONAL: 0–5 are accepted. The upper bound (≤5) and the ownership +
--- existence checks for any photos that ARE supplied are kept unchanged.
+-- A request may include 0–5 photos. The ≤5 upper bound and the ownership +
+-- existence checks for any supplied photos apply as usual.
 --
 -- The only subtlety: array_length() of an empty/NULL array returns NULL, so the
 -- storage-existence check (count(*) <> array_length(...)) must run ONLY when
@@ -31,7 +29,7 @@ begin
     raise exception 'location_required';
   end if;
 
-  -- Deduplicate. v_paths may be NULL (no photos) — that is now allowed.
+  -- Deduplicate. v_paths may be NULL (no photos), which is allowed.
   select array_agg(distinct p) into v_paths from unnest(p_photo_paths) as p;
   v_count := coalesce(array_length(v_paths, 1), 0);
 

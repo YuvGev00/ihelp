@@ -17,8 +17,8 @@ const validRequest = {
   photoPaths: ["user-1/photo.png"],
 };
 
-describe("requestSchema — invalid inputs (assignment §3.4)", () => {
-  it("accepts a valid paid request", () => {
+describe("requestSchema — content and location bounds", () => {
+  it("accepts a valid request", () => {
     expect(requestSchema.safeParse(validRequest).success).toBe(true);
   });
 
@@ -35,7 +35,7 @@ describe("requestSchema — invalid inputs (assignment §3.4)", () => {
     ).toBe(false);
   });
 
-  it("REGRESSION: absent location must fail, not become (0,0) Null Island", () => {
+  it("absent location must fail, not become (0,0) Null Island", () => {
     // formData.get() returns null for absent hidden inputs
     const r = requestSchema.safeParse({ ...validRequest, lat: null, lng: null });
     expect(r.success).toBe(false);
@@ -118,7 +118,7 @@ describe("ratingSchema", () => {
     expect(ratingSchema.safeParse({ stars: "3.5", note: "" }).success).toBe(false);
   });
 
-  it("REGRESSION: empty stars (nothing selected) fails", () => {
+  it("empty stars (nothing selected) fails", () => {
     expect(ratingSchema.safeParse({ stars: "", note: "" }).success).toBe(false);
   });
 });
@@ -151,7 +151,7 @@ describe("profile + verification schemas — phone format", () => {
     ).toBe(false);
   });
 
-  it("REGRESSION: identity application without the optional ID photo passes", () => {
+  it("identity application without the optional ID photo passes", () => {
     expect(
       identityApplicationSchema.safeParse({
         fullName: "דנה לוי",

@@ -1,15 +1,10 @@
--- iHelp: three offer stances (product change 2026-07-06).
+-- iHelp: three offer pricing stances.
 --
--- Before: offers.price null meant "volunteering" — but a helper often cannot
--- quote a price before seeing the problem (a plumber, an electrician). So an
--- offer now declares one of three PRICING MODES:
+-- An offer declares one of three pricing modes:
 --   'fixed'      → price set now, in offers.price
---   'volunteer'  → free, price stays null forever
---   'after_job'  → price unknown until the work is done; the helper sets the
---                  final amount once the request is `completed` (final_price).
---
--- This makes null-price ambiguous no longer: 'volunteer' means free,
--- 'after_job' with a null price means "to be determined".
+--   'volunteer'  → free, price stays null
+--   'after_job'  → price set once the request is completed (final_price);
+--                  a helper often cannot quote before seeing the problem.
 
 create type public.pricing_mode as enum ('fixed', 'volunteer', 'after_job');
 
@@ -18,9 +13,8 @@ alter table public.offers
   add column final_price  numeric(10,2)
     check (final_price is null or (final_price > 0 and final_price <= 99999.99));
 
--- Backfill BEFORE adding the coupling constraint: a priced offer was 'fixed'
--- under the old model, a null-price offer was a volunteer. Adding the CHECK
--- first would fail on the momentarily-'volunteer'-with-price rows.
+-- Backfill pricing_mode from existing prices before adding the coupling CHECK:
+-- a priced offer is 'fixed', a null-price offer is 'volunteer'.
 update public.offers set pricing_mode = 'fixed'     where price is not null;
 update public.offers set pricing_mode = 'volunteer' where price is null;
 
@@ -34,10 +28,9 @@ alter table public.offers add constraint price_matches_mode check (
   (pricing_mode = 'after_job' and price is null)
 );
 
--- The offer INSERT/UPDATE policies referenced the old "price only on paid
--- requests" rule; extend it so the paid-request gate covers BOTH ways a helper
--- can charge (a fixed price now, or the after_job mode). Volunteering is
--- allowed anywhere.
+-- The offer INSERT/UPDATE policies gate charging: a helper may charge (a fixed
+-- price or the after_job mode) only where the requester offered to pay.
+-- Volunteering is allowed anywhere.
 drop policy offers_insert on public.offers;
 create policy offers_insert on public.offers
   for insert to authenticated
@@ -150,8 +143,8 @@ end $$;
 revoke execute on function public.set_final_price(uuid, numeric) from public, anon;
 grant execute on function public.set_final_price(uuid, numeric) to authenticated;
 
--- mark_paid now recognizes an agreed amount from EITHER a fixed price or a
--- set after_job final price (a volunteer job still has nothing to mark).
+-- mark_paid recognizes an agreed amount from either a fixed price or a set
+-- after_job final price (a volunteer job has nothing to mark).
 create or replace function public.mark_paid(p_request_id uuid)
 returns void
 language plpgsql security definer set search_path = public as $$

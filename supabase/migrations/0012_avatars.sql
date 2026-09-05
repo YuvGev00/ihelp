@@ -1,4 +1,4 @@
--- iHelp: optional profile pictures (product change 2026-07-06).
+-- iHelp: optional profile pictures.
 -- Every user may set an avatar; it shows wherever they appear (offer cards,
 -- helper profile). Optional — the UI falls back to initials when absent.
 
