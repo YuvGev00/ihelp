@@ -12,9 +12,11 @@ Final project · *Internet Technologies — Become a Full-Stack Engineer* · RUN
 ![TypeScript](https://img.shields.io/badge/TypeScript-5-3178c6?style=flat-square&logo=typescript&logoColor=white)
 ![Supabase](https://img.shields.io/badge/Supabase-Postgres%20%2B%20RLS-3ecf8e?style=flat-square&logo=supabase&logoColor=white)
 ![Tailwind](https://img.shields.io/badge/Tailwind-v4-38bdf8?style=flat-square&logo=tailwindcss&logoColor=white)
-![Tests](https://img.shields.io/badge/tests-65%20passing-0f6b4f?style=flat-square)
+[![CI](https://github.com/YuvGev00/ihelp/actions/workflows/ci.yml/badge.svg)](https://github.com/YuvGev00/ihelp/actions/workflows/ci.yml)
 
 **[🌐 Live app](https://ihelp-roan.vercel.app)** · **[📄 Easy-review guide](docs/easy-review.md)** · **[📚 All docs](#-documentation)**
+
+<a href="https://ihelp-roan.vercel.app"><img src="docs/images/landing.png" alt="iHelp landing page" width="820"></a>
 
 </div>
 
@@ -127,6 +129,11 @@ npm run dev        # → http://localhost:3000
 
 **Other commands:** `npm test` (Vitest) · `npm run test:e2e` (Playwright) ·
 `npm run lint` · `npm run build`.
+
+**CI:** every push and PR runs lint, typecheck and unit tests, then spins up a
+throwaway local Supabase stack in the runner to run the integration suite (RLS
+permission matrix + lifecycle) and the Playwright E2E flow — see
+[`.github/workflows/ci.yml`](.github/workflows/ci.yml).
 
 ---
 
